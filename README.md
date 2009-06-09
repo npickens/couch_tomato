@@ -1,3 +1,101 @@
+## This Fork of Couch Potato
+
+We're huge fans of Couch Potato. We love it's advocacy for using Couch naturally (not trying to make it look like a SQL database). In this fork, we're trying out a few ideas that will (hopefully) further this pursuit.
+
+### Multi-Database Support
+
+Couch makes it dead-simple to manage multiple databases. For large data-sets, it's very important to separate unrelated documents into separate databases. Couch Potato should make this easy.
+
+Currently, you save a document by using a database, like so:
+
+    user = User.new :name => 'joe'
+    CouchPotato.database.save_document user # or save_document!
+
+Love it. Except it needs to work well with multiple databases. Couch Potato supports this already:
+
+    couchrest_database = CouchRest.database!("http://#{host}:#{port}/#{base_name}_#{name}_#{RAILS_ENV}")
+    user_db = CouchPotato::Database.new(couchrest_database)
+    
+    user = User.new :name => 'joe'
+    user_db.save_document user # or save_document!
+
+We want to take this one step further:
+
+    user = User.new :name => 'joe'
+    UserDb.save_document user
+    UserDb.view :by_created_at
+    UserDb.view :by_created_at, :raw => true
+    UserDb.view :by_created_at, :key => [2009, 6, 8], :raw => true
+
+### Each view should determine the model for its values
+
+Views return arbitrary hashes. Often our views' value is an entire document (or more correctly, utilize `emit(key, null)` combined with `:include_docs => true`). When this is true, Couch Potato helps you out. But, Couch Potato should help us out even if our view output is different than our model (and for us, this is often the case).
+
+Instead of views being declared and defined inside a model, we'll define views on the database (this is arguably more Couch-like). When views are declared, they'll stipulate whether their results should be 'raw' or a particular model type.
+
+    class UserDb > CouchPotato::Database
+      view :by_created_at, User
+      view :count # raw
+    end
+
+### Store view definitions on the file system
+
+Rather than having Ruby generate JavaScript or writing JavaScript in our Ruby code as a string, we prefer to define our views in files on the file system:
+
+    RAILS_ROOT/db/views/users/*-map.js
+    RAILS_ROOT/db/views/users/*-reduce.js
+    
+The reduce is optional. If you want to define views in a specific design document (called 'lazy'), you can do so:
+
+    RAILS_ROOT/db/views/users/lazy/*.js
+
+We'll use a generator to take some of the grunt work out:
+
+    script/generate view users by_created_at
+    script/generate view users/lazy by_birthday
+    script/generate view users by_created_on map reduce
+
+Rake tasks apply the views on the file system to Couch:
+
+    rake couch_potato:views:apply
+
+This is similar to how 'CouchApp' (used to?) work. There'll also be a task to show detailed information about the differences between the views in Couch and on the file system:
+
+    rake couch_potato:views:dirty
+
+### Remove dynamically generated views
+
+We've found that we generally need to write JavaScript to get the view behavior we need, and, for both conceptual and implementation complexity reasons, we value having all the views contained in one place--the file system.
+
+The current implementation of dynamic views has some limitations. Consider the following dynamic view definition:
+
+    view :all, :key => :created_at
+
+Suppose you wanted to change that to:
+
+    view :all, :key => :updated_at
+
+Your change would not be reflected until you manually deleted the corresponding design document from CouchDB, since the view is only created if it doesn't already exist or if an exception is generated. This could be troublesome in development, and really bad in production. A potential solution would be to compare the content of each view within each design document with the content implied by the Ruby view declaration. If the contents differ, then the design document needs to be updated with the latest content. This would need to be done before each view query, or more likely, done only the first time a view is queried in a Ruby process's lifetime.
+
+Even with these proposed improvements, this strategy doesn't work well for us. We have some large data-sets in production, and our views need to be inserted and warmed up before bringing the application online (building views the first time can take several minutes). If a view hasn't been inserted and is queried at runtime, we want to fail-fast with an error rather than the application hanging for several minutes while the view is inserted and built. Failing-fast also helps us recognize potential problems while working in development with data-sets small enough that we wouldn't notice a potential issue.
+
+Certainly the dynamically generated views strategy could be changed to fail-fast with an error when views are out of sync, requiring explicit insertion/update of views.
+
+### Multiple design documents per database
+
+CouchDB supports multiple design documents per database. There's an important semantic consideration: all views in a design document are updated if any one view needs to be updated. To improve the read performance of couch views under high-volume reads and writes, you could organize views that don't need to be as timely into a separate design document named 'lazy', and always include the `stale=true` couch option in queries to views defined in the 'lazy' design document. You could then have a script that ran periodically to trigger the 'lazy' views to update.
+
+    class UserDb > CouchPotato::Database
+      name :users
+      
+      view :by_created_at, User
+      view :count # raw
+      view 'lazy/count_created_by_date'
+    end
+
+We have not yet found a use for this, or demonstrated that the claimed performance benefit actually exists (it originated from the CouchDB docs, wiki or list or some-such). But, it does show a instance where this approach to representing views maps fairly directly to CouchDB functionality.
+
+
 ## Couch Potato
 
 ... is a persistence layer written in ruby for CouchDB.
