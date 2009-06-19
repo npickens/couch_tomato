@@ -9,12 +9,14 @@ require 'ostruct'
 module CouchPotato
   Config = OpenStruct.new
 
-  # Returns a database instance which you can then use to create objects and query views. You have to set the CouchPotato::Config.database_name before this works.
+  # Returns a database instance which you can then use to create objects and query views. 
+  # You have to set the CouchPotato::Config.database_name before this works.
   def self.database
     @@__database ||= Database.new(self.couchrest_database)
   end
 
-  # Returns the underlying CouchRest database object if you want low level access to your CouchDB. You have to set the CouchPotato::Config.database_name before this works.
+  # Returns the underlying CouchRest database object if you want low level access to your CouchDB. 
+  # You have to set the CouchPotato::Config.database_name before this works.
   def self.couchrest_database
     @@__couchrest_database ||= CouchRest.database(full_url_to_database)
   end
