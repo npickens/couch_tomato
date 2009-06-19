@@ -1,11 +1,16 @@
 module CouchPotato
+  JSON_TYPES = [String, Integer, Hash, Array, Fixnum, Float]
   module Persistence
     class SimpleProperty  #:nodoc:
       attr_accessor :name, :type
       
       def initialize(owner_clazz, name, options = {})
+        if JSON_TYPES.include?(options[:type])
+          raise "#{options[:type]} is a native JSON type, only custom types should be specified"
+        end
+        
         self.name = name
-        self.type = options[:type]
+        self.type = options[:type] 
         owner_clazz.class_eval do
           attr_reader name, "#{name}_was"
           

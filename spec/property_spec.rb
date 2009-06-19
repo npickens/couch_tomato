@@ -12,6 +12,7 @@ end
 describe 'properties' do
   before(:all) do
     recreate_db
+    reload_test_class("Comment")
   end
   
   it "should return the property names" do
@@ -23,6 +24,25 @@ describe 'properties' do
     CouchPotato.database.save_document! c
     c = CouchPotato.database.load_document c.id
     c.title.should == 'my title'
+  end
+  
+  # Explicitly declaring `:type => String` on a property raises an exception
+  # "wrong argument type String (expected Hash)" on load. The json gem defines a
+  # String.json_create method that expects a hash in the form `{'raw' => [0x61,
+  # 0x62]}` where `[0x61, 0x62].pack => 'ab'`
+  # 
+  # CouchPotato expects various `json_create` methods to accept a String (and
+  # return an instance). Currently, if `:type` is not specified, the type of the
+  # value is assumed to be String and `json_create` is not called.
+
+  it "Should raise an exception if a property is of a JSON native type" do
+    [Float, String, Integer, Array, Hash, Fixnum].each do |klass|
+      doing {
+        Comment.class_eval do
+          property :name, :type => klass
+        end
+      }.should raise_error("#{klass} is a native JSON type, only custom types should be specified")      
+    end    
   end
   
   it "should persist a number" do
