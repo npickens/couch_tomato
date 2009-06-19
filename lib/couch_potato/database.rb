@@ -1,8 +1,39 @@
+# todo: depend on active support gem?
+require 'active_support'
+
 module CouchPotato
   class Database
+    class_inheritable_accessor :database_prefix    
+    def self.prefix(prefix)
+      self.database_prefix = prefix
+    end
+    
+    class_inheritable_accessor :database_name
+    def self.name(name)
+      self.database_name = name
+    end
+
+    class_inheritable_accessor :database_server
+    def self.server(server)
+      self.database_server = server
+    end
+    
+    class_inheritable_accessor :db
+    class_inheritable_accessor :couchrest_db
+    
+    # Returns a database instance which you can then use to create objects and query views. You have to set self.database_name before this works.
+    def self.database
+      self.db ||= new(self.couchrest_database)
+      # new(self.couchrest_database)
+    end
+    
+    # Returns the underlying CouchRest database object if you want low level access to your CouchDB. You have to set the self.database_name before this works.
+    def self.couchrest_database
+      self.couchrest_db ||= CouchRest.database(full_url_to_database)
+    end
     
     class ValidationsFailedError < ::StandardError; end
-  
+    
     def initialize(couchrest_database)
       @database = couchrest_database
       begin
@@ -12,11 +43,23 @@ module CouchPotato
       end
     end
     
-    def view(spec)
-      results = CouchPotato::View::ViewQuery.new(database,
-        spec.design_document, spec.view_name, spec.map_function,
-        spec.reduce_function).query_view!(spec.view_parameters)
-      spec.process_results results
+    class_inheritable_accessor :designs
+    self.designs = {}
+    def self.view(view_name, options={})
+      puts "hello " * 10
+      design_name = options.delete(:design) || self.database_name.to_sym      
+      model = options[:model] || :raw
+      
+      design = self.designs[design_name] ||= {}
+      design[view_name] = options # should this have a value??? wrong structure?
+    end
+    
+    def view(options)
+      
+      # results = CouchPotato::View::ViewQuery.new(database,
+      #   spec.design_document, spec.view_name, spec.map_function,
+      #   spec.reduce_function).query_view!(spec.view_parameters)
+      # spec.process_results results
     end
   
     def save_document(document)
@@ -90,7 +133,12 @@ module CouchPotato
       document.run_callbacks :after_update
       true
     end
-  
+    
+    def self.full_url_to_database
+      raise("No Database configured. Set #{self.class}.database_name") unless self.database_name
+      self.database_server ? "#{self.database_server}#{self.database_name}" : "http://127.0.0.1:5984/#{self.database_name}"
+    end
+    
     def database
       @database
     end

@@ -1,9 +1,4 @@
 require File.dirname(__FILE__) + '/base_view_spec'
-require File.dirname(__FILE__) + '/model_view_spec'
-require File.dirname(__FILE__) + '/properties_view_spec'
-require File.dirname(__FILE__) + '/custom_view_spec'
-require File.dirname(__FILE__) + '/raw_view_spec'
-
 
 module CouchPotato
   module View
