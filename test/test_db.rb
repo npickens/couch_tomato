@@ -8,9 +8,22 @@ class TestDb < CouchPotato::Database
   # view :standard, :model => Post
   # view :view_name, :design => 'lazy'
   
+  # view :limited_view, :model => Post, :limit => 1
+  
   # def self.view(params)
   # end
 end
 
 # TestDb.view(:standard, {:limit => 1})
 # TestDb.view(:standard, {:model => NotPost, :limit => 1})
+
+# TestDb.view(:limited_view, :limit => 10, :key => "Monday")
+
+other_db2 = CouchPotato::Database.new(couchrest_db2)
+CouchPotato.blah.view Comment.all
+CouchPotato.database.save Comment.new
+
+other_db = CouchPotato::Database.new(couchrest_db)
+other_db.view Comment.all
+other_db.save Comment.new
+

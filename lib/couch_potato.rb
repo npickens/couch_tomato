@@ -15,6 +15,15 @@ module CouchPotato
     @@__database ||= Database.new(self.couchrest_database)
   end
 
+# other_db2 = CouchPotato::Database.new(couchrest_db2)
+# CouchPotato.database.view Comment.all
+# CouchPotato.database.save Comment.new
+# 
+# other_db = CouchPotato::Database.new(couchrest_db)
+# other_db.view Comment.all
+# other_db.save Comment.new
+
+
   # Returns the underlying CouchRest database object if you want low level access to your CouchDB. 
   # You have to set the CouchPotato::Config.database_name before this works.
   def self.couchrest_database

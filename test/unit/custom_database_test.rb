@@ -68,5 +68,12 @@ class CustomDatabaseTest < Test::Unit::TestCase
       # assert_received(CouchPotato::Database) {|klass| klass.view(:standard)}
     end
     
+    should "" do
+      TestDb.class_eval do
+        view :standard
+      end
+
+    end
+    
   end
 end
