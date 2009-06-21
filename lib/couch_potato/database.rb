@@ -3,38 +3,21 @@ require 'active_support'
 
 module CouchPotato
   class Database
-    class_inheritable_accessor :database_prefix    
-    def self.prefix(prefix)
-      self.database_prefix = prefix
-    end
-    
-    class_inheritable_accessor :database_name
-    def self.name(name)
-      self.database_name = name
-    end
-
-    class_inheritable_accessor :database_server
-    def self.server(server)
-      self.database_server = server
-    end
-    
-    class_inheritable_accessor :db
-    class_inheritable_accessor :couchrest_db
-    
-    # Returns a database instance which you can then use to create objects and query views. You have to set self.database_name before this works.
-    def self.database
-      self.db ||= new(self.couchrest_database)
-      # new(self.couchrest_database)
-    end
-    
-    # Returns the underlying CouchRest database object if you want low level access to your CouchDB. You have to set the self.database_name before this works.
-    def self.couchrest_database
-      self.couchrest_db ||= CouchRest.database(full_url_to_database)
-    end
     
     class ValidationsFailedError < ::StandardError; end
+        
     
+    class_inheritable_accessor :database_prefix 
+    class_inheritable_accessor :database_name    
+    # class_inheritable_accessor :db
+    class_inheritable_accessor :couchrest_db
+    class_inheritable_accessor :designs
+    
+    self.designs = {}
+           
     def initialize(couchrest_database)
+      
+      
       @database = couchrest_database
       begin
         couchrest_database.info 
@@ -43,8 +26,39 @@ module CouchPotato
       end
     end
     
-    class_inheritable_accessor :designs
-    self.designs = {}
+
+
+    def self.prefix(prefix)
+      self.database_prefix = prefix
+    end
+    
+
+    def self.name(name)
+      self.database_name = name
+    end
+    
+    # Asume that it is always running on localhost for now.
+    
+    # class_inheritable_accessor :database_server
+    # def self.server(server)
+    #   self.database_server = server
+    # end
+    
+
+    
+    # Returns a database instance which you can then use to create objects and query views.
+    # You have to set self.database_name before this works.
+    # def self.database
+    #   self.db ||= new(self.couchrest_database)
+    #   # new(self.couchrest_database)
+    # end
+    
+    # Returns the underlying CouchRest database object if you want low level access to your 
+    # CouchDB. You have to set the self.database_name before this works.
+    def self.couchrest_database
+      self.couchrest_db ||= CouchRest.database(full_url_to_database)
+    end
+    
     def self.view(view_name, options={})
       puts "hello " * 10
       design_name = options.delete(:design) || self.database_name.to_sym      
@@ -54,13 +68,13 @@ module CouchPotato
       design[view_name] = options # should this have a value??? wrong structure?
     end
     
-    def view(options)
-      
-      # results = CouchPotato::View::ViewQuery.new(database,
-      #   spec.design_document, spec.view_name, spec.map_function,
-      #   spec.reduce_function).query_view!(spec.view_parameters)
-      # spec.process_results results
-    end
+    # def view(options)
+    #   
+    #   # results = CouchPotato::View::ViewQuery.new(database,
+    #   #   spec.design_document, spec.view_name, spec.map_function,
+    #   #   spec.reduce_function).query_view!(spec.view_parameters)
+    #   # spec.process_results results
+    # end
   
     def save_document(document)
       return true unless document.dirty?

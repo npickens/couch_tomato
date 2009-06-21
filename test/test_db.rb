@@ -4,26 +4,21 @@ class TestDb < CouchPotato::Database
   
   # todo: specify db=>host mapping in yaml, and allow to differ per environment (default to http://localhost:5184)
   
-  # view :standard
-  # view :standard, :model => Post
-  # view :view_name, :design => 'lazy'
+  view :complete, :name => "all", :model => Purchase 
+  view :recent, :name => "all", :limit => 10,  :model => Purchase, :design => 'lazy' 
   
-  # view :limited_view, :model => Post, :limit => 1
-  
-  # def self.view(params)
+  # with_model Purchase do |x|
+  #   x.view :all
+  #   x.view :recent, :limit => 10
   # end
+  # TestDb.purchases.all
+  # TestDb.purchases.recent
+  
 end
 
-# TestDb.view(:standard, {:limit => 1})
-# TestDb.view(:standard, {:model => NotPost, :limit => 1})
+# TestDb.query_view(:complete, {:limit => 1})
 
-# TestDb.view(:limited_view, :limit => 10, :key => "Monday")
-
-other_db2 = CouchPotato::Database.new(couchrest_db2)
-CouchPotato.blah.view Comment.all
-CouchPotato.database.save Comment.new
-
-other_db = CouchPotato::Database.new(couchrest_db)
-other_db.view Comment.all
-other_db.save Comment.new
+# TestDb.query_view(:recent, {:model => InternationalPurchase, :limit => 1})
+         
+# TestDb.query_view(:recent, :limit => 10, :key => "Monday")
 
