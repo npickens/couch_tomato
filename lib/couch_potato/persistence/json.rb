@@ -8,6 +8,7 @@ module CouchPotato
       # returns a JSON representation of a model in order to store it in CouchDB
       def to_json(*args)
         to_hash.to_json(*args)
+        # to_json(*args)
       end
       
       # returns all the attributes, the ruby class and the _id and _rev of a model as a Hash

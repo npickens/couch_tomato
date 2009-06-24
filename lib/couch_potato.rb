@@ -47,5 +47,8 @@ require File.dirname(__FILE__) + '/core_ext/time'
 require File.dirname(__FILE__) + '/core_ext/date'
 require File.dirname(__FILE__) + '/core_ext/string'
 require File.dirname(__FILE__) + '/core_ext/symbol'
+require File.dirname(__FILE__) + '/core_ext/extract_options'
+require File.dirname(__FILE__) + '/core_ext/duplicable'
+require File.dirname(__FILE__) + '/core_ext/inheritable_attributes'
 require File.dirname(__FILE__) + '/couch_potato/persistence'
 

@@ -1,110 +1,93 @@
-# todo: depend on active support gem?
-require 'active_support'
+require 'couchrest'
 
 module CouchPotato
   class Database
     
     class ValidationsFailedError < ::StandardError; end
-        
     
-    class_inheritable_accessor :database_prefix 
+    # Database
+    class_inheritable_accessor :prefix_string  
     class_inheritable_accessor :database_name    
-    # class_inheritable_accessor :db
+    class_inheritable_accessor :database_server
     class_inheritable_accessor :couchrest_db
-    class_inheritable_accessor :designs
+    class_inheritable_accessor :design_docs
     
-    self.designs = {}
+    # someday
+    # class_inheritable_accessor :database_prefix
+    
+    # View
+    # class_inheritable_accessor: 
+    
+    self.design_docs = {}
+    self.prefix_string = ''
            
-    def initialize(couchrest_database)
+    def self.prefix (name)
+       self.prefix_string =  name || '' 
+    end
+    def self.name (name)
+      raise 'You need to provide a database name' if name.nil?
+      self.database_name   = (name.class == Symbol)? name.to_s : name
+    end
+    
+    def self.server (route)
+      self.database_server = route || 'http://127.0.0.1:5984/'
+
+      self.couchrest_db    ||= CouchRest.database("#{self.database_server}#{self.prefix_string}#{self.database_name}")
       
-      
-      @database = couchrest_database
       begin
-        couchrest_database.info 
+        self.couchrest_db.info 
       rescue RestClient::ResourceNotFound
-        raise "Database '#{couchrest_database.name}' does not exist."
+        raise "Database '#{self.couchrest_db.name}' does not exist."
       end
+
     end
     
-
-
-    def self.prefix(prefix)
-      self.database_prefix = prefix
-    end
     
-
-    def self.name(name)
-      self.database_name = name
-    end
-    
-    # Asume that it is always running on localhost for now.
-    
-    # class_inheritable_accessor :database_server
-    # def self.server(server)
-    #   self.database_server = server
-    # end
-    
-
-    
-    # Returns a database instance which you can then use to create objects and query views.
-    # You have to set self.database_name before this works.
-    # def self.database
-    #   self.db ||= new(self.couchrest_database)
-    #   # new(self.couchrest_database)
-    # end
-    
-    # Returns the underlying CouchRest database object if you want low level access to your 
-    # CouchDB. You have to set the self.database_name before this works.
-    def self.couchrest_database
-      self.couchrest_db ||= CouchRest.database(full_url_to_database)
-    end
-    
-    def self.view(view_name, options={})
-      puts "hello " * 10
-      design_name = options.delete(:design) || self.database_name.to_sym      
-      model = options[:model] || :raw
+    def self.view(name, options={})
+      # if design_docs is empty, create the default design doc      
+      local_design = !options[:design_doc]? self.database_name.to_sym : options.delete(:design_doc).to_sym 
+      local_view = {}
+            
+      raise 'A View nemonic must be specified' if name.nil?
       
-      design = self.designs[design_name] ||= {}
-      design[view_name] = options # should this have a value??? wrong structure?
+      local_view[:view_name] = options.delete(:view_name) || name.to_s
+      
+      # if no model is given, then assume it will be returned as a Hash
+      local_view[:model] = options.delete(:model) || Hash
+      
+      local_view[:couch_options] = options
+      
+      self.design_docs[local_design] ||= {}
+      self.design_docs[local_design][name] = local_view
+
     end
     
-    # def view(options)
-    #   
-    #   # results = CouchPotato::View::ViewQuery.new(database,
-    #   #   spec.design_document, spec.view_name, spec.map_function,
-    #   #   spec.reduce_function).query_view!(spec.view_parameters)
-    #   # spec.process_results results
-    # end
-  
-    def save_document(document)
+    def self.save_document(document)
       return true unless document.dirty?
       if document.new?
-        create_document document
+        self.create_document document
       else
-        update_document document
+        self.update_document document
       end
     end
-    alias_method :save, :save_document
-  
-    def save_document!(document)
+    
+    def self.save_document!(document)
       save_document(document) || raise(ValidationsFailedError.new(document.errors.full_messages))
     end
-    alias_method :save!, :save_document!
-  
-    def destroy_document(document)
+    
+    def self.destroy_document(document)
       document.run_callbacks :before_destroy
       document._deleted = true
-      database.delete_doc document.to_hash
+      self.couchrest_db.delete_doc document.to_hash
       document.run_callbacks :after_destroy
       document._id = nil
       document._rev = nil
     end
-    alias_method :destroy, :destroy_document
   
-    def load_document(id)
+    def self.load_document(id)
       raise "Can't load a document without an id (got nil)" if id.nil?
       begin
-        json = database.get(id)
+        json = self.couchrest_db.get(id)
         instance = Class.const_get(json['ruby_class']).json_create json
         instance.database = self
         instance
@@ -112,22 +95,35 @@ module CouchPotato
         nil
       end
     end
-    alias_method :load, :load_document
   
     def inspect
       "#<CouchPotato::Database>"
     end
+
+    class << self
+      alias_method :save, :save_document
+      alias_method :save_doc, :save_document
+      
+      alias_method :save!, :save_document!
+      alias_method :save_doc!, :save_document!
+      
+      alias_method :destroy, :destroy_document
+      alias_method :destroy_doc, :destroy_document
+      
+      alias_method :load, :load_document
+      alias_method :load_doc, :load_document
+    end
   
     private
   
-    def create_document(document)
+    def self.create_document(document)
       document.database = self
       document.run_callbacks :before_validation_on_save
       document.run_callbacks :before_validation_on_create
       return unless document.valid?
       document.run_callbacks :before_save
       document.run_callbacks :before_create
-      res = database.save_doc document.to_hash
+      res = self.couchrest_db.save_doc document.to_hash
       document._rev = res['rev']
       document._id = res['id']
       document.run_callbacks :after_save
@@ -135,27 +131,19 @@ module CouchPotato
       true
     end
   
-    def update_document(document)
+    def self.update_document(document)
       document.run_callbacks :before_validation_on_save
       document.run_callbacks :before_validation_on_update
       return unless document.valid?
       document.run_callbacks :before_save
       document.run_callbacks :before_update
-      res = database.save_doc document.to_hash
+      res = self.couchrest_db.save_doc document.to_hash
       document._rev = res['rev']
       document.run_callbacks :after_save
       document.run_callbacks :after_update
       true
     end
-    
-    def self.full_url_to_database
-      raise("No Database configured. Set #{self.class}.database_name") unless self.database_name
-      self.database_server ? "#{self.database_server}#{self.database_name}" : "http://127.0.0.1:5984/#{self.database_name}"
-    end
-    
-    def database
-      @database
-    end
-  
+
+   
   end
 end

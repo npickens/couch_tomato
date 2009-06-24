@@ -6,7 +6,7 @@ require 'rr'
 
 $:.unshift(File.dirname(__FILE__) + '/../lib')
 
-require 'couch_potato'
+require File.dirname(__FILE__) + '/../lib/couch_potato.rb'
 
 unless Test::Unit::TestCase.include?(RR::Adapters::TestUnit)
   class Test::Unit::TestCase
