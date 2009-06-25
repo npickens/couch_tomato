@@ -24,6 +24,9 @@ module CouchPotato
           method_str = "def #{view_name}(view_parameters = {}); execute_view(\"#{view_name}\", view_parameters); end"
           self.instance_eval(method_str)
         end
+        # def #{view_name} (view_parameters ={})
+        #   execute_view("\#{view_name}\", view_parameters)
+        # end
 
         def view_spec_class(type)
           if type && type.is_a?(Class)

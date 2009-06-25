@@ -1,4 +1,5 @@
 require 'couchrest'
+require 'pp'
 
 module CouchPotato
   class Database
@@ -10,7 +11,7 @@ module CouchPotato
     class_inheritable_accessor :database_name    
     class_inheritable_accessor :database_server
     class_inheritable_accessor :couchrest_db
-    class_inheritable_accessor :design_docs
+    class_inheritable_accessor :views
     
     # someday
     # class_inheritable_accessor :database_prefix
@@ -18,7 +19,7 @@ module CouchPotato
     # View
     # class_inheritable_accessor: 
     
-    self.design_docs = {}
+    self.views = {}
     self.prefix_string = ''
            
     def self.prefix (name)
@@ -44,22 +45,18 @@ module CouchPotato
     
     
     def self.view(name, options={})
-      # if design_docs is empty, create the default design doc      
-      local_design = !options[:design_doc]? self.database_name.to_sym : options.delete(:design_doc).to_sym 
-      local_view = {}
-            
       raise 'A View nemonic must be specified' if name.nil?
+            
+      self.views[name] = {}  
       
-      local_view[:view_name] = options.delete(:view_name) || name.to_s
+      self.views[name][:design_doc] = !options[:design_doc] ? self.database_name.to_sym : options.delete(:design_doc).to_sym 
+            
+      self.views[name][:view_name] = options.delete(:view_name) || name.to_s
       
       # if no model is given, then assume it will be returned as a Hash
-      local_view[:model] = options.delete(:model) || Hash
+      self.views[name][:model] = options.delete(:model) || :raw
       
-      local_view[:couch_options] = options
-      
-      self.design_docs[local_design] ||= {}
-      self.design_docs[local_design][name] = local_view
-
+      self.views[name][:couch_options] = options
     end
     
     def self.save_document(document)
@@ -96,8 +93,22 @@ module CouchPotato
       end
     end
   
-    def inspect
+    def self.inspect
       "#<CouchPotato::Database>"
+    end
+    
+    def self.query_view!(name, parameters = {})
+        begin
+          results = self.query_view(name, parameters)
+          puts "=========="
+          puts results.inspect
+          puts "=========="
+
+          self.process_results(name, results)
+        rescue RestClient::ResourceNotFound# => e
+          puts "View not found"
+          raise
+        end
     end
 
     class << self
@@ -144,6 +155,26 @@ module CouchPotato
       true
     end
 
-   
-  end
-end
+    def self.query_view(name,parameters)
+      doc_name = self.views[name][:design_doc]
+      view_name = self.views[name][:view_name]
+      self.couchrest_db.view "#{self.views[name][:design_doc]}/#{self.views[name][:view_name]}", parameters
+    end
+    
+    def self.process_results(name, results)
+      raw_result = !self.views[name][:couch_options][:reduce].nil? || self.views[name][:model] == :raw
+      results['rows'].map do |row|
+        if raw_result
+          row['value']
+        else
+          # TODO: Check if the row contains a key value pair that 
+          #       mentions to which class this "row" belongs to 
+          #       then call the json_create on that class instead of the
+          #       class specified in the view
+          self.views[name][:model].json_create row['value']
+        end
+      end
+    end
+    
+  end # class
+end # module
