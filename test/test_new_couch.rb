@@ -4,7 +4,7 @@ require File.dirname(__FILE__) + '/test_db'
 require File.dirname(__FILE__) + '/../lib/couch_potato.rb'
 
 
-class SampleTest < Test::Unit::TestCase
+class TestNewCouch < Test::Unit::TestCase
   context "A Database class" do
     setup do 
 
