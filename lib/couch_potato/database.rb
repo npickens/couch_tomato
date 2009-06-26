@@ -16,16 +16,18 @@ module CouchPotato
     self.prefix_string = ''
            
     def self.prefix (name)
-       self.prefix_string =  name || '' 
+       self.prefix_string =  name || ''
+       self.prefix_string += '_' if  ! name.nil?
     end
     def self.name (name)
       raise 'You need to provide a database name' if name.nil?
       self.database_name   = (name.class == Symbol)? name.to_s : name
     end
     
+    # TODO: specify db=>host mapping in yaml, and allow to differ per environment 
     def self.server (route)
       self.database_server = route || 'http://127.0.0.1:5984/'
-      self.couchrest_db    ||= CouchRest.database("#{self.database_server}#{self.prefix_string}_#{self.database_name}")
+      self.couchrest_db    ||= CouchRest.database("#{self.database_server}#{self.prefix_string}#{self.database_name}")
       begin
         self.couchrest_db.info 
       rescue RestClient::ResourceNotFound

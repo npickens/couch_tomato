@@ -3,16 +3,43 @@ require 'rubygems'
 require 'test/unit'
 require 'shoulda'
 require 'rr'
+require 'couchrest'
 
 $:.unshift(File.dirname(__FILE__) + '/../lib')
-
-require File.dirname(__FILE__) + '/../lib/couch_potato.rb'
 
 unless Test::Unit::TestCase.include?(RR::Adapters::TestUnit)
   class Test::Unit::TestCase
     include RR::Adapters::TestUnit
   end
 end
+
+def camelize given_string
+  given_string.sub(/^([a-z])/) {$1.upcase}.gsub(/_([a-z])/) do
+    $1.upcase
+  end
+end
+
+# Source
+# http://github.com/rails/rails/blob/b600bf2cd728c90d50cc34456c944b2dfefe8c8d/activesupport/lib/active_support/inflector.rb
+def underscore given_string
+  given_string.gsub(/::/, '/').
+    gsub(/([A-Z]+)([A-Z][a-z])/,'\1_\2').
+    gsub(/([a-z\d])([A-Z])/,'\1_\2').
+    tr("-", "_").
+    downcase
+end
+
+def reload_test_db_class (klass)
+  Object.class_eval do
+    if const_defined? klass
+      remove_const klass
+    end
+  end
+  
+  load underscore(klass) +'.rb'
+end
+
+
 
 # class Test::Unit::TestCase
 #   include RR::Adapters::TestUnit unless include?(RR::Adapters::TestUnit)
