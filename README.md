@@ -93,7 +93,7 @@ CouchDB supports multiple design documents per database. There's an important se
       view 'lazy/count_created_by_date'
     end
 
-We have not yet found a use for this, or demonstrated that the claimed performance benefit actually exists (it originated from the CouchDB docs, wiki or list or some-such). But, it does show a instance where this approach to representing views maps fairly directly to CouchDB functionality.
+We have not yet found a use for this, or demonstrated that the claimed performance benefit actually exists (it originated from the CouchDB docs, wiki or list or some-such). But, it does show an instance where this approach to representing views maps fairly directly to CouchDB functionality.
 
 
 ## Couch Potato
