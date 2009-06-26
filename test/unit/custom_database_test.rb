@@ -6,17 +6,7 @@ end
 class DbTestUser
 end
 
-def reload_test_db_class
-  Object.class_eval do
-    if const_defined? 'TestDb'
-      remove_const 'TestDb'
-    end
-  end
-  
-  load 'test_db.rb'
-  # require 'test_db.rb'
-end
-reload_test_db_class
+reload_test_db_class (TestDb)
 
 class CustomDatabaseTest < Test::Unit::TestCase
 
