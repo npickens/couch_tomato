@@ -2,7 +2,7 @@ require File.dirname(__FILE__) + '/../test_helper'
 require File.dirname(__FILE__) + '/../test_db'
 require File.dirname(__FILE__) + '/../../lib/couch_potato.rb'
 
-class TestNewCouch < Test::Unit::TestCase
+class NewCouchTest < Test::Unit::TestCase
   context "A Database class" do
     setup do
       reload_test_db_class('TestDb')
@@ -15,20 +15,22 @@ class TestNewCouch < Test::Unit::TestCase
       assert_equal TestDb.database_name, 'hello-world'
     end # have db name
     
-    should "instatiate the couchrest database after the server is assigned" do
+    should "assign the localhost as server if none is given" do
       
       stub(TestDb).database_name{'hello-world'}
+      stub(TestDb.couchrest_db).info{1}
       
       TestDb.class_eval do
-        server 'http://127.0.0.1:5984/' 
+        server 
       end
-      assert_respond_to TestDb.couchrest_db, :info
+      assert_equal TestDb.database_server, 'http://127.0.0.1:5984/'
     end #instatiate couchrest
     
     context "with a correctly configured database and server" do
       setup do
         stub(TestDb).database_name{'hello-world'}
         stub(TestDb).database_server{'http://127.0.0.1:5984/'}
+        stub(TestDb.couchrest_db).info{1}
       end
     
       should "raise an exception if no nemonic is given for the view" do
@@ -110,27 +112,135 @@ class TestNewCouch < Test::Unit::TestCase
           end          
         end # context ,
       end #context if given a doc to save
+      
+      context "if loading a document" do
+        setup do
+          
+        end
+
+        should "raise an exception if no id is given" do
+          assert_raise ArgumentError do
+            TestDb.load_doc
+          end 
+        end
+        
+        should "raise an exception if a nil id is given" do
+          assert_raise RuntimeError do
+            TestDb.load_doc nil
+          end 
+        end
+        
+        should "return nil if no document matching the given id is found" do
+          stub(TestDb.couchrest_db).get('123456789'){raise RestClient::ResourceNotFound}
+          document = TestDb.load_doc '123456789'
+          assert_equal document, nil
+        end
+
+        should "return a hash if :model => :raw is given as an option" do
+          stub(TestDb.couchrest_db).get('123456789'){{:key => "value", :key2 => "value2", }}
+          document = TestDb.load_doc '123456789', :model => :raw
+          assert_equal document, {:key => "value", :key2 => "value2", }
+        end
+        
+        should "return a hash if the document does not specify a class" do
+          stub(TestDb.couchrest_db).get('123456789'){{:key => "value", :key2 => "value2", }}
+          document = TestDb.load_doc '123456789'
+          assert_equal document, {:key => "value", :key2 => "value2", }
+        end
+        
+        should "return the right class of object if one is specified in the document" do
+          stub(TestDb.couchrest_db).get('123456789'){{'ruby_class' => 'Object', :key2 => "value2", }}
+          document = TestDb.load_doc '123456789'
+          assert_equal document.class, Object
+        end 
+      end #context loading document
+      
+      context "if querying a view" do
+        setup do
+          
+        end
+
+        should "raise an exception if the view is not found in the DB class" do
+          #  self.query_view(name, options.merge(self.views[name][:couch_options]))
+          assert_raise RuntimeError do
+            TestDb.query_view!(:query_name)
+          end
+        end
+        
+        should "raise an exception if the view is not found in the database" do
+          stub(TestDb).query_view(:query_name,{}){raise RestClient::ResourceNotFound}
+          stub(TestDb).views{{:query_name => "query_name"}}
+          
+          assert_raise RestClient::ResourceNotFound do
+            TestDb.query_view!(:query_name)
+          end
+          
+        end
+        
+        context "the results" do
+          setup do
+            @fields = {:"key" => "value", :"key2" => "value2"}
+            @fields2 = {:"key3" => "value3", :"key4" => "value4"}
+            
+            @row1 = {"id" => "123456789", "value" => @fields, "key" => "7654321"}
+            @row2 = {"id" => "987654321", "value" => @fields2, "key" => "1234567"}
+            
+          end
+
+           should "return an array of hashes if the documents do not cotain Class info" do
+            stub(TestDb).query_view(:query_name,{}){{"rows" => [@row1, @row2], "offset" => 0, "total_rows" => 2 }}
+            stub(TestDb).views{{:query_name => "query_name"}}
+          
+            assert_equal TestDb.query_view!(:query_name), [@fields, @fields2]
+          end
+          
+          should "return an array of hashes if the documents cotain Class info but the user specified :model=> :raw" do
+            @fields.merge!({"ruby_class" => "Object"})
+            @fields2.merge!({"ruby_class" => "Object"})
+          
+            stub(TestDb).query_view(:query_name,{:model => :raw}){{"rows" => [@row1, @row2], "offset" => 0, "total_rows" => 2 }}
+            stub(TestDb).views{{:query_name => "query_name"}}
+          
+            assert_equal TestDb.query_view!(:query_name, :model => :raw ), [@fields, @fields2]
+          
+          end
+        
+          should "return an array of Objects if the view definition specified :model=> Object" do
+            @fields.merge!({"ruby_class" => "Object"})
+            @fields2.merge!({"ruby_class" => "Object"})
+
+            stub(TestDb).query_view(:query_name,{}){{"rows" => [@row1, @row2], "offset" => 0, "total_rows" => 2 }}
+            stub(TestDb).views{{:query_name => {:model => Object}}}
+          
+            assert_equal TestDb.query_view!(:query_name, {})[0].class, Object
+            assert_equal TestDb.query_view!(:query_name, {})[1].class, Object
+          end
+          
+          should "return an array of Objects if the view definition did not specify :model=> Object but the docs contain 'ruby_class' info" do
+            @fields.merge!({"ruby_class" => "Object"})
+            @fields2.merge!({"ruby_class" => "Object"})
+          
+            stub(TestDb).query_view(:query_name,{}){{"rows" => [@row1, @row2], "offset" => 0, "total_rows" => 2 }}
+            stub(TestDb).views{{:query_name => "query_name"}}
+          
+            assert_equal TestDb.query_view!(:query_name, {})[0].class, Object
+            assert_equal TestDb.query_view!(:query_name, {})[1].class, Object
+          
+          end          
+          
+          should "return an mixed array of Objects and hashes if the view definition did not specify :model=> Object but some docs contain 'ruby_class' info" do
+            @fields.merge!({"ruby_class" => "Object"})
+
+            stub(TestDb).query_view(:query_name,{}){{"rows" => [@row1, @row2], "offset" => 0, "total_rows" => 2 }}
+            stub(TestDb).views{{:query_name => "query_name"}}
+          
+            assert_equal TestDb.query_view!(:query_name, {})[0].class, Object
+            assert_equal TestDb.query_view!(:query_name, {})[1].class, Hash
+          
+          end
+        end # context the results          
+      end # context querying a view
+      
     end # context with db and serv
   end #context a Db  
 end # class
-
-
-    # should "have a server" do
-    #   assert_equal TestDb.database_server, 'http://127.0.0.1:5984/'
-    # end
-    # 
-    # should "respond to prefix" do
-    #   assert_respond_to TestDb, :prefix
-    # end
-    # 
-    # should "respond to view" do
-    #   assert_respond_to TestDb, :view
-    # end
-    # 
-    # context "with defined views" do
-    #   
-    #   should "have a design document with name of the database" do
-    #     assert TestDb.views
-    #   end
-    #   
-    # end
