@@ -33,7 +33,7 @@ Views return arbitrary hashes. Often our views' value is an entire document (or 
 
 Instead of views being declared and defined inside a model, we'll define views on the database (this is arguably more Couch-like). When views are declared, they'll stipulate whether their results should be 'raw' or a particular model type.
 
-    class UserDb > CouchPotato::Database
+    class UserDb < CouchPotato::Database
       view :by_created_at, User
       view :count # raw
     end
@@ -131,7 +131,7 @@ Couch Potato is hosted as a gem on github which you can install like this:
 
 Alternatively you can download or clone the source repository and then require lib/couch_potato.rb.
 
-You MUST specificy the name of the database:
+You MUST specify the name of the database:
 
     CouchPotato::Config.database_name = 'name of the db'
 
