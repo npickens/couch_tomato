@@ -2,7 +2,7 @@ require File.dirname(__FILE__) + '/../test_helper'
 require File.dirname(__FILE__) + '/../test_db'
 require File.dirname(__FILE__) + '/../../lib/couch_potato.rb'
 
-class NewCouchTest < Test::Unit::TestCase
+class NewCouch < Test::Unit::TestCase
   context "A Database class" do
     setup do
       reload_test_db_class('TestDb')
@@ -16,9 +16,10 @@ class NewCouchTest < Test::Unit::TestCase
     end # have db name
     
     should "assign the localhost as server if none is given" do
-      
+      @db =  Object.new
       stub(TestDb).database_name{'hello-world'}
-      stub(TestDb.couchrest_db).info{1}
+      stub(TestDb).couchrest_db{@db}
+      stub(@db).info{1}
       
       TestDb.class_eval do
         server 
