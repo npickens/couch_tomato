@@ -38,7 +38,8 @@ module CouchPotato
       begin
         self.couchrest_db.info 
       rescue RestClient::ResourceNotFound
-        raise "Database '#{tmp_prefix}#{self.couchrest_db.name}#{tmp_suffix}' does not exist."
+        # raise "Database '#{tmp_prefix}#{self.couchrest_db.name}#{tmp_suffix}' does not exist."
+        raise "Database '#{self.couchrest_db.name}' does not exist."
       end
 
     end
