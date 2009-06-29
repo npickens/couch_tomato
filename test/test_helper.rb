@@ -1,9 +1,10 @@
 require 'rubygems'
-# require 'activesupport'
 require 'test/unit'
 require 'shoulda'
 require 'rr'
 require 'couchrest'
+require File.dirname(__FILE__) + '/../lib/couch_potato.rb'
+
 
 $:.unshift(File.dirname(__FILE__) + '/../lib')
 
@@ -13,33 +14,18 @@ unless Test::Unit::TestCase.include?(RR::Adapters::TestUnit)
   end
 end
 
-def camelize given_string
-  given_string.sub(/^([a-z])/) {$1.upcase}.gsub(/_([a-z])/) do
-    $1.upcase
+
+def unload_const (klass)
+  if Object.send :const_defined?, klass
+    Object.send :remove_const, klass
   end
 end
 
-# Source
-# http://github.com/rails/rails/blob/b600bf2cd728c90d50cc34456c944b2dfefe8c8d/activesupport/lib/active_support/inflector.rb
-def underscore given_string
-  given_string.gsub(/::/, '/').
-    gsub(/([A-Z]+)([A-Z][a-z])/,'\1_\2').
-    gsub(/([a-z\d])([A-Z])/,'\1_\2').
-    tr("-", "_").
-    downcase
+def create_const(super_klass=nil)
+  super_klass ? Class.new(super_klass) : Class.new
 end
 
-def reload_test_db_class (klass)
-  Object.class_eval do
-    if const_defined? klass
-      remove_const klass
-    end
-  end
-  
-  load underscore(klass) +'.rb'
-end
-
-
+# TestDb = create_const(CouchPotato::Database)
 
 # class Test::Unit::TestCase
 #   include RR::Adapters::TestUnit unless include?(RR::Adapters::TestUnit)

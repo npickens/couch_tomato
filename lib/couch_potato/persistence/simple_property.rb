@@ -1,9 +1,9 @@
 module CouchPotato
-  JSON_TYPES = [String, Integer, Hash, Array, Fixnum, Float]
   module Persistence
     class SimpleProperty  #:nodoc:
       attr_accessor :name, :type
-      
+      JSON_TYPES = [String, Integer, Hash, Array, Fixnum, Float]
+        
       def initialize(owner_clazz, name, options = {})
         if JSON_TYPES.include?(options[:type])
           raise "#{options[:type]} is a native JSON type, only custom types should be specified"
@@ -66,13 +66,13 @@ module CouchPotato
         object.send("#{name}_changed?")
       end
       
-      def save(object)
-        
-      end
-      
-      def destroy(object)
-        
-      end
+      # def save(object)
+      #     
+      #   end
+      #   
+      #   def destroy(object)
+      #     
+      #   end
       
       def serialize(json, object)
         json[name] = object.send name

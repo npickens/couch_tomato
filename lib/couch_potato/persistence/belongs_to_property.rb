@@ -29,17 +29,17 @@ module CouchPotato
         owner_clazz.send :attr_reader, "#{name}_id"
       end
       
-      def save(object)
-        
-      end
+      # def save(object)
+      #   
+      # end
       
       def dirty?(object)
         false
       end
       
-      def destroy(object)
-        
-      end
+      # def destroy(object)
+      #   
+      # end
       
       def build(object, json)
         object.send "#{name}_id=", json["#{name}_id"]
