@@ -36,7 +36,6 @@ module CouchPotato
       
       self.couchrest_db ||= CouchRest.database("#{tmp_server}#{tmp_prefix}#{self.database_name}#{tmp_suffix}")
       begin
-        # TODO: Fix the name of the database
         self.couchrest_db.info 
       rescue RestClient::ResourceNotFound
         raise "Database '#{tmp_prefix}#{self.database_name}#{tmp_suffix}' does not exist."
