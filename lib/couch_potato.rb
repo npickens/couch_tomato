@@ -51,4 +51,4 @@ require File.dirname(__FILE__) + '/core_ext/extract_options'
 require File.dirname(__FILE__) + '/core_ext/duplicable'
 require File.dirname(__FILE__) + '/core_ext/inheritable_attributes'
 require File.dirname(__FILE__) + '/couch_potato/persistence'
-
+require File.dirname(__FILE__) + '/couch_potato/js_view_source'
