@@ -6,8 +6,7 @@ require File.dirname(__FILE__) + '/persistence/callbacks'
 require File.dirname(__FILE__) + '/persistence/json'
 require File.dirname(__FILE__) + '/persistence/dirty_attributes'
 require File.dirname(__FILE__) + '/persistence/validation'
-# require File.dirname(__FILE__) + '/view/custom_views'
-# require File.dirname(__FILE__) + '/view/view_query'
+
 
 
 module CouchPotato
@@ -18,7 +17,7 @@ module CouchPotato
       base.send :include, DirtyAttributes
       base.send :include, MagicTimestamps
       base.class_eval do
-        attr_accessor :_id, :_rev, :_attachments, :_deleted, :database
+        attr_accessor :_id, :_rev, :_attachments, :_deleted#, :database
         alias_method :id, :_id
       end
     end

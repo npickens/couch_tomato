@@ -1,4 +1,5 @@
 require 'couchrest'
+require 'pp'
 
 module CouchPotato
   class Database
@@ -17,7 +18,6 @@ module CouchPotato
            
     def self.prefix (name)
        self.prefix_string =  name || ''
-       self.prefix_string += '_' if  ! name.nil?
     end
     def self.name (name)
       raise 'You need to provide a database name' if name.nil?
@@ -25,12 +25,20 @@ module CouchPotato
     end
     
     # TODO: specify db=>host mapping in yaml, and allow to differ per environment 
-    def self.server (route)
-      self.database_server = route || 'http://127.0.0.1:5984/'
-      self.couchrest_db    ||= CouchRest.database("#{self.database_server}#{self.prefix_string}#{self.database_name}")
+    def self.server (route='http://127.0.0.1:5984/')
+      self.database_server = route 
+      self.prefix_string ||= ''
+      
+      tmp_prefix = self.prefix_string + '_'  unless self.prefix_string.empty?
+      tmp_server = self.database_server + '/' unless self.database_server.match(/\/$/)
+      tmp_suffix = '_' + Rails.env  if defined?(Rails)
+
+      
+      self.couchrest_db ||= CouchRest.database("#{tmp_server}#{tmp_prefix}#{self.database_name}#{tmp_suffix}")
       begin
         self.couchrest_db.info 
       rescue RestClient::ResourceNotFound
+        # raise "Database '#{tmp_prefix}#{self.couchrest_db.name}#{tmp_suffix}' does not exist."
         raise "Database '#{self.couchrest_db.name}' does not exist."
       end
 
@@ -68,14 +76,22 @@ module CouchPotato
       document._rev = nil
     end
   
-    def self.load_document(id)
+    def self.load_document(id, options ={})
       raise "Can't load a document without an id (got nil)" if id.nil?
+      
       begin
+        # json = self.couchrest_db.get(id)
+        # instance = Class.const_get(json['ruby_class']).json_create json
+        # # instance.database = self
+        # instance
         json = self.couchrest_db.get(id)
-        instance = Class.const_get(json['ruby_class']).json_create json
-        instance.database = self
-        instance
-      rescue(RestClient::ResourceNotFound)
+        if options[:model] == :raw || ! json['ruby_class']
+          {}.merge(json)
+        else
+          instance = Class.const_get(json['ruby_class']).json_create json
+          instance
+        end
+      rescue(RestClient::ResourceNotFound) #'Document not found'
         nil
       end
     end
@@ -84,15 +100,22 @@ module CouchPotato
       "#<CouchPotato::Database>"
     end
     
-    def self.query_view!(name, parameters = {})
-        begin
-          results = self.query_view(name, parameters.merge(self.views[name][:couch_options]))
-          puts parameters.merge(self.views[name][:couch_options])
-          self.process_results(name, results)
-        rescue RestClient::ResourceNotFound# => e
-          puts "View not found"
-          raise
-        end
+    def self.query_view!(name, options={})
+      view = self.views[name]
+      raise 'View does not exist' unless view
+      
+      begin
+        tmp_couch_opts = view[:couch_options] || {}
+        pr_options = options.merge(tmp_couch_opts)
+        results = self.query_view(name, pr_options) || []
+        # puts '======================'
+        #  pp results
+        #  puts '======================'
+        self.process_results(name, results, pr_options)
+      rescue RestClient::ResourceNotFound# => e
+        raise
+      end
+      
     end
 
     class << self
@@ -112,7 +135,7 @@ module CouchPotato
     private
   
     def self.create_document(document)
-      document.database = self
+      # document.database = self
       document.run_callbacks :before_validation_on_save
       document.run_callbacks :before_validation_on_create
       return unless document.valid?
@@ -140,13 +163,14 @@ module CouchPotato
     end
 
     def self.query_view(name,parameters)
-
       self.couchrest_db.view "#{self.views[name][:design_doc]}/#{self.views[name][:view_name]}", parameters
     end
     
-    def self.process_results(name, results)
+    def self.process_results(name, results, options ={})
       view = self.views[name]
-      return_raw = !view[:couch_options][:reduce].nil? || view[:model] == :raw
+      couch_opts = view[:couch_options] || {}
+      
+      return_raw = !couch_opts[:reduce].nil? || view[:model] == :raw || options[:model] == :raw
       # TODO: This code looks like C (REVIEW)
       results['rows'].map do |row|
         if return_raw
