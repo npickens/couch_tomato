@@ -194,12 +194,11 @@ class DatabaseTes < Test::Unit::TestCase
             
             @row1 = {"id" => "123456789", "value" => @fields, "key" => "7654321"}
             @row2 = {"id" => "987654321", "value" => @fields2, "key" => "1234567"}
-            
           end
 
            should "return an array of hashes if the documents do not cotain Class info" do
             stub(TestDb).query_view(:query_name,{}){{"rows" => [@row1, @row2], "offset" => 0, "total_rows" => 2 }}
-            stub(TestDb).views{{:query_name => "query_name"}}
+            stub(TestDb).views{{:query_name => {:anything => "query_name"}}}
           
             assert_equal TestDb.query_view!(:query_name), [@fields, @fields2]
           end
@@ -209,7 +208,7 @@ class DatabaseTes < Test::Unit::TestCase
             @fields2.merge!({"ruby_class" => "Object"})
           
             stub(TestDb).query_view(:query_name,{:model => :raw}){{"rows" => [@row1, @row2], "offset" => 0, "total_rows" => 2 }}
-            stub(TestDb).views{{:query_name => "query_name"}}
+            stub(TestDb).views{{:query_name => {:anything => "query_name"}}}
           
             assert_equal TestDb.query_view!(:query_name, :model => :raw ), [@fields, @fields2]
           
@@ -221,6 +220,9 @@ class DatabaseTes < Test::Unit::TestCase
 
             stub(TestDb).query_view(:query_name,{}){{"rows" => [@row1, @row2], "offset" => 0, "total_rows" => 2 }}
             stub(TestDb).views{{:query_name => {:model => Object}}}
+            stub(Object).json_create(@fields, {"id"=>"123456789", "key"=>"7654321"}){Object.new}
+            stub(Object).json_create(@fields2, {"id"=>"987654321", "key"=>"1234567"}){Object.new}
+            
           
             assert_equal TestDb.query_view!(:query_name, {})[0].class, Object
             assert_equal TestDb.query_view!(:query_name, {})[1].class, Object
@@ -231,7 +233,9 @@ class DatabaseTes < Test::Unit::TestCase
             @fields2.merge!({"ruby_class" => "Object"})
           
             stub(TestDb).query_view(:query_name,{}){{"rows" => [@row1, @row2], "offset" => 0, "total_rows" => 2 }}
-            stub(TestDb).views{{:query_name => "query_name"}}
+            stub(TestDb).views{{:query_name => {:anything => "query_name"}}}
+            stub(Object).json_create(@fields, {"id"=>"123456789", "key"=>"7654321"}){Object.new}
+            stub(Object).json_create(@fields2, {"id"=>"987654321", "key"=>"1234567"}){Object.new}
           
             assert_equal TestDb.query_view!(:query_name, {})[0].class, Object
             assert_equal TestDb.query_view!(:query_name, {})[1].class, Object
@@ -242,7 +246,9 @@ class DatabaseTes < Test::Unit::TestCase
             @fields.merge!({"ruby_class" => "Object"})
 
             stub(TestDb).query_view(:query_name,{}){{"rows" => [@row1, @row2], "offset" => 0, "total_rows" => 2 }}
-            stub(TestDb).views{{:query_name => "query_name"}}
+            stub(TestDb).views{{:query_name => {:anything => "query_name"}}}
+            stub(Object).json_create(@fields, {"id"=>"123456789", "key"=>"7654321"}){Object.new}
+            stub(Hash).json_create(@fields2, {"id"=>"987654321", "key"=>"1234567"}){Object.new}
           
             assert_equal TestDb.query_view!(:query_name, {})[0].class, Object
             assert_equal TestDb.query_view!(:query_name, {})[1].class, Hash

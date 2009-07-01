@@ -31,7 +31,7 @@ module CouchPotato
       module ClassMethods
         
         # creates a model instance from JSON
-        def json_create(json)
+        def json_create(json, meta={})
           return if json.nil?
           instance = self.new
           instance._id = json[:_id] || json['_id']
@@ -39,6 +39,7 @@ module CouchPotato
           properties.each do |property|
             property.build(instance, json)
           end
+          instance.metadata = meta
           instance
         end
       end
