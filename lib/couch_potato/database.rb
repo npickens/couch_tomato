@@ -38,8 +38,7 @@ module CouchPotato
       begin
         self.couchrest_db.info 
       rescue RestClient::ResourceNotFound
-        # raise "Database '#{tmp_prefix}#{self.couchrest_db.name}#{tmp_suffix}' does not exist."
-        raise "Database '#{self.couchrest_db.name}' does not exist."
+        raise "Database '#{tmp_prefix}#{self.database_name}#{tmp_suffix}' does not exist."
       end
 
     end
@@ -55,7 +54,12 @@ module CouchPotato
     end
     
     def self.save_document(document)
+      # TODO: Need to place some protected block here to respond to an exception in case trying to save
+      #       a :raw document with an old _rev number
+      return self.couchrest_db.save_doc(document) unless document.respond_to?(:dirty?)
+      
       return true unless document.dirty?
+
       if document.new?
         self.create_document document
       else
@@ -97,7 +101,11 @@ module CouchPotato
     end
   
     def self.inspect
-      "#<CouchPotato::Database>"
+      super
+      puts 'Database name: ' + self.database_name
+      puts 'Database server: ' + self.database_server
+      puts 'Views:'
+      pp self.views
     end
     
     def self.query_view!(name, options={})
@@ -108,9 +116,6 @@ module CouchPotato
         tmp_couch_opts = view[:couch_options] || {}
         pr_options = options.merge(tmp_couch_opts)
         results = self.query_view(name, pr_options) || []
-        # puts '======================'
-        #  pp results
-        #  puts '======================'
         self.process_results(name, results, pr_options)
       rescue RestClient::ResourceNotFound# => e
         raise
@@ -167,25 +172,51 @@ module CouchPotato
     end
     
     def self.process_results(name, results, options ={})
-      view = self.views[name]
-      couch_opts = view[:couch_options] || {}
+      # view = self.views[name]
+      options = self.views[name].merge(options)
       
-      return_raw = !couch_opts[:reduce].nil? || view[:model] == :raw || options[:model] == :raw
-      # TODO: This code looks like C (REVIEW)
+      couch_opts = options[:couch_options] || {}
+      return_raw = couch_opts[:reduce] || options[:model] == :raw
+      
+      first_result = results['rows'][0]
+      
+      if (first_result['doc'] && first_result['value'])
+        raise "View results contain doc and value keys. Don't pass `:include_docs => true` to a view that does not `emit(some_key,null)`" 
+      end
+      
+      field_to_read = first_result['doc'] ? 'doc' : 'value'  
+      
+      # TODO: This code looks like C (REVIEW)      
       results['rows'].map do |row|
-        if return_raw
-          row['value']
-        elsif view[:model].nil?
-          if row['value']['ruby_class'].nil?
-            row['value']
-          else
-            Class.const_get(row['value']['ruby_class']).json_create row['value']
-          end
+        next row[field_to_read] if return_raw
+        
+        if options[:model]
+          meta = {'id' => row['id']}.merge({'key' => row['key']})
+          options[:model].json_create(row[field_to_read], meta)
         else
-          view[:model].json_create row['value']
-        end                
+          if row[field_to_read]['ruby_class'].nil?
+            row[field_to_read]
+          else
+            meta = {'id' => row['id']}.merge({'key' => row['key']})
+            Class.const_get(row[field_to_read]['ruby_class']).json_create(row[field_to_read], meta)
+          end
+        end
       end # results do
     end
     
   end # class
 end # module
+
+        # if return_raw
+        #   row[field_to_read]
+        # elsif options[:model].nil?
+        #   if row[field_to_read]['ruby_class'].nil?
+        #     row[field_to_read]
+        #   else
+        #     meta = {'id' => row['id']}.merge({'key' => row['key']})
+        #     Class.const_get(row[field_to_read]['ruby_class']).json_create(row[field_to_read], meta)
+        #   end
+        # else
+        #   meta = {'id' => row['id']}.merge({'key' => row['key']})
+        #   options[:model].json_create(row[field_to_read], meta)
+        # end                
