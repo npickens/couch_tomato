@@ -120,7 +120,6 @@ module CouchPotato
       rescue RestClient::ResourceNotFound# => e
         raise
       end
-      
     end
 
     class << self

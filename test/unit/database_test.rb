@@ -79,7 +79,7 @@ class DatabaseTes < Test::Unit::TestCase
         end
                  
         should "call update_doc if the document is not new" do               
-          stub(@document).new?{nil}     
+          stub(@document).new?{nil}
           stub(TestDb).update_document {true}   
           dont_allow(TestDb).create_document(@document)
           assert_equal TestDb.save_document(@document), true    
@@ -161,8 +161,10 @@ class DatabaseTes < Test::Unit::TestCase
         should "return the right class of object if one is specified in the document" do
           stub(TestDb.couchrest_db).get('123456789'){{'ruby_class' => 'Object', :key2 => "value2", }}
           document = TestDb.load_doc '123456789'
+          # document = TestDb.load_doc '123456789', :model => Object
+          
           assert_equal document.class, Object
-        end 
+        end
       end #context loading document
       
       context "if querying a view" do
