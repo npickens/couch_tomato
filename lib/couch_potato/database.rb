@@ -115,7 +115,7 @@ module CouchPotato
       begin
         tmp_couch_opts = view[:couch_options] || {}
         pr_options = options.merge(tmp_couch_opts)
-        results = self.query_view(name, pr_options) || []
+        results = self.query_view(name, pr_options)
         self.process_results(name, results, pr_options)
       rescue RestClient::ResourceNotFound# => e
         raise
