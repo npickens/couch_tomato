@@ -180,11 +180,11 @@ module CouchPotato
       
       first_result = results['rows'][0]
       
-      if (first_result['doc'] && first_result['value'])
+      if (first_result && first_result['doc'] && first_result['value'])
         raise "View results contain doc and value keys. Don't pass `:include_docs => true` to a view that does not `emit(some_key,null)`" 
       end
       
-      field_to_read = first_result['doc'] ? 'doc' : 'value'  
+      field_to_read = first_result && first_result['doc'] ? 'doc' : 'value'  
       
       # TODO: This code looks like C (REVIEW)      
       results['rows'].map do |row|

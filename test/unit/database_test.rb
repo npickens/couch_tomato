@@ -203,6 +203,13 @@ class DatabaseTes < Test::Unit::TestCase
             assert_equal TestDb.query_view!(:query_name), [@fields, @fields2]
           end
           
+          should "return an empty array if results is empty" do
+            stub(TestDb).views{{:query_name => {:anything => "query_name"}}}
+            
+            empty_results = {"rows" => [], "offset" => 0, "total_rows" => 2 }
+            assert_equal TestDb.process_results(:query_name, empty_results), []
+          end
+          
           should "return an array of hashes if the documents cotain Class info but the user specified :model=> :raw" do
             @fields.merge!({"ruby_class" => "Object"})
             @fields2.merge!({"ruby_class" => "Object"})
