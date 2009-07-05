@@ -1,5 +1,5 @@
 require 'digest/sha1'
-# require 'pp'
+#require 'pp'
 
 module CouchPotato
   class JsViewSource
@@ -99,12 +99,14 @@ module CouchPotato
     private
     
     def self.fs_database_names
-      path = "#{RAILS_ROOT}/db/views"
+      #COMMENTED BELOW TO ALLOW FOR TESTING
+      #path = "#{RAILS_ROOT}/db/views"
       Dir[path + "/**"].map {|path| path.split('/').last}
     end
     
+    #CHANGE: removed db.get, and made it get
     def self.db_design_docs(db)
-      design_docs = db.get("_all_docs", {:startkey => "_design/", :endkey => "_design0", :include_docs => true})['rows']
+      design_docs = get(db, "_all_docs", {:startkey => "_design/", :endkey => "_design0", :include_docs => true})['rows']
       design_docs.inject({}) do |res, row|
         doc = row['doc']
         design_name = doc['_id'].split('/').last
@@ -116,7 +118,7 @@ module CouchPotato
     # :clicks => {'by_date' => {'map' => ..., 'reduce' => ..., sha1-map => ..., sha1-reduce => ...} }
     def self.fs_design_docs(db_name)
       design_docs = {}
-      path = "#{RAILS_ROOT}/db/views/#{db_name}"
+      #path = "#{RAILS_ROOT}/db/views/#{db_name}"
       Dir[path + "/**"].each do |dir|
         view_path = dir.match(/\.js$/) ? dir : nil
         design_name = view_path ? db_name : dir.split('/').last
