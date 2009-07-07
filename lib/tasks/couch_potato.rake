@@ -6,6 +6,6 @@ namespace :couch_potato do
 
   desc 'Compares views in DB and the File System'
   task :diff => :environment do
-    CouchPotato::FsViewFile.diff
+    CouchPotato::JsViewSource.diff
   end
 end
