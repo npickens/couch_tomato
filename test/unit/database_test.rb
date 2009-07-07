@@ -1,6 +1,11 @@
 require File.dirname(__FILE__) + '/../test_helper'
 require File.dirname(__FILE__) + '/../../lib/couch_potato.rb'
 
+module Foo
+  class Bar
+  end
+end
+
 class DatabaseTes < Test::Unit::TestCase
   context "A Database class" do
     setup do
@@ -165,6 +170,13 @@ class DatabaseTes < Test::Unit::TestCase
           
           assert_equal document.class, Object
         end
+        
+        should "find classes namespeced within other classes" do
+          stub(TestDb.couchrest_db).get('123456789'){{'ruby_class' => 'Foo::Bar', :key2 => "value2", }}
+          document = TestDb.load_doc '123456789'
+          
+          assert_equal document.class, Foo::Bar
+        end
       end #context loading document
       
       context "if querying a view" do
@@ -204,6 +216,8 @@ class DatabaseTes < Test::Unit::TestCase
           
             assert_equal TestDb.query_view!(:query_name), [@fields, @fields2]
           end
+          
+          should "find classes namespeced within other classes"
           
           should "return an empty array if results is empty" do
             stub(TestDb).views{{:query_name => {:anything => "query_name"}}}

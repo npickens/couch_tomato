@@ -92,7 +92,8 @@ module CouchPotato
         if options[:model] == :raw || ! json['ruby_class']
           {}.merge(json)
         else
-          instance = Class.const_get(json['ruby_class']).json_create json
+          klass = class_from_string(json['ruby_class'])
+          instance = klass.json_create json
           instance
         end
       rescue(RestClient::ResourceNotFound) #'Document not found'
@@ -197,10 +198,18 @@ module CouchPotato
             row[field_to_read]
           else
             meta = {'id' => row['id']}.merge({'key' => row['key']})
-            Class.const_get(row[field_to_read]['ruby_class']).json_create(row[field_to_read], meta)
+            # Class.const_get(row[field_to_read]['ruby_class']).json_create(row[field_to_read], meta)
+            klass = class_from_string(row[field_to_read]['ruby_class'])
+            klass.json_create(row[field_to_read], meta)
           end
         end
       end # results do
+    end
+    
+    private
+    
+    def self.class_from_string(string)
+      string.to_s.split('::').inject(Object){|a, m| a = a.const_get(m.to_sym)}
     end
     
   end # class
