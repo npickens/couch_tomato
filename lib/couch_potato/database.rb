@@ -89,7 +89,7 @@ module CouchPotato
         # # instance.database = self
         # instance
         json = self.couchrest_db.get(id)
-        if options[:model] == :raw || ! json['ruby_class']
+        if options[:model] == :raw || !json['ruby_class']
           {}.merge(json)
         else
           klass = class_from_string(json['ruby_class'])
@@ -190,9 +190,11 @@ module CouchPotato
       results['rows'].map do |row|
         next row[field_to_read] if return_raw
         
-        if options[:model]
+        model = options[:model]
+        if model
+          model = model.kind_of?(String) ? class_from_string(model) : model
           meta = {'id' => row['id']}.merge({'key' => row['key']})
-          options[:model].json_create(row[field_to_read], meta)
+          model.json_create(row[field_to_read], meta)
         else
           if row[field_to_read]['ruby_class'].nil?
             row[field_to_read]

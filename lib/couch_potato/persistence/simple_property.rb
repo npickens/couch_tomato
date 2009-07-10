@@ -27,7 +27,7 @@ module CouchPotato
           private :assign_attribute_copies_for_dirty_tracking
           
           def clone_attribute(value)
-            if [Fixnum, Symbol, TrueClass, FalseClass, NilClass, Float].include?(value.class)
+            if [Bignum, Fixnum, Symbol, TrueClass, FalseClass, NilClass, Float].include?(value.class)
               value
             else
               value.clone
