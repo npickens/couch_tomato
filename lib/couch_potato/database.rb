@@ -103,8 +103,8 @@ module CouchPotato
   
     def self.inspect
       super
-      puts 'Database name: ' + self.database_name
-      puts 'Database server: ' + self.database_server
+      puts 'Database name: ' + (self.database_name || 'nil')
+      puts 'Database server: ' + (self.database_server || 'nil')
       puts 'Views:'
       pp self.views
     end
