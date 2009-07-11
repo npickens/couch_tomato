@@ -89,10 +89,11 @@ module CouchPotato
         # # instance.database = self
         # instance
         json = self.couchrest_db.get(id)
-        if options[:model] == :raw || ! json['ruby_class']
+        if options[:model] == :raw || !json['ruby_class']
           {}.merge(json)
         else
-          instance = Class.const_get(json['ruby_class']).json_create json
+          klass = class_from_string(json['ruby_class'])
+          instance = klass.json_create json
           instance
         end
       rescue(RestClient::ResourceNotFound) #'Document not found'
@@ -115,12 +116,11 @@ module CouchPotato
       begin
         tmp_couch_opts = view[:couch_options] || {}
         pr_options = options.merge(tmp_couch_opts)
-        results = self.query_view(name, pr_options) || []
+        results = self.query_view(name, pr_options)
         self.process_results(name, results, pr_options)
       rescue RestClient::ResourceNotFound# => e
         raise
       end
-      
     end
 
     class << self
@@ -190,18 +190,28 @@ module CouchPotato
       results['rows'].map do |row|
         next row[field_to_read] if return_raw
         
-        if options[:model]
+        model = options[:model]
+        if model
+          model = model.kind_of?(String) ? class_from_string(model) : model
           meta = {'id' => row['id']}.merge({'key' => row['key']})
-          options[:model].json_create(row[field_to_read], meta)
+          model.json_create(row[field_to_read], meta)
         else
           if row[field_to_read]['ruby_class'].nil?
             row[field_to_read]
           else
             meta = {'id' => row['id']}.merge({'key' => row['key']})
-            Class.const_get(row[field_to_read]['ruby_class']).json_create(row[field_to_read], meta)
+            # Class.const_get(row[field_to_read]['ruby_class']).json_create(row[field_to_read], meta)
+            klass = class_from_string(row[field_to_read]['ruby_class'])
+            klass.json_create(row[field_to_read], meta)
           end
         end
       end # results do
+    end
+    
+    private
+    
+    def self.class_from_string(string)
+      string.to_s.split('::').inject(Object){|a, m| a = a.const_get(m.to_sym)}
     end
     
   end # class
