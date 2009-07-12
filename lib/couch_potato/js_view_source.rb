@@ -98,15 +98,16 @@ module CouchPotato
     
     private
     
+    def self.path(db_name="")
+      "#{Rails.root}/db/views/#{db_name}" if Rails
+    end
+    
     def self.fs_database_names
-      #COMMENTED BELOW TO ALLOW FOR TESTING
-      #path = "#{RAILS_ROOT}/db/views"
       Dir[path + "/**"].map {|path| path.split('/').last}
     end
     
-    #CHANGE: removed db.get, and made it get
     def self.db_design_docs(db)
-      design_docs = get(db, "_all_docs", {:startkey => "_design/", :endkey => "_design0", :include_docs => true})['rows']
+      design_docs = db.get("_all_docs", {:startkey => "_design/", :endkey => "_design0", :include_docs => true})['rows']
       design_docs.inject({}) do |res, row|
         doc = row['doc']
         design_name = doc['_id'].split('/').last
@@ -118,35 +119,39 @@ module CouchPotato
     # :clicks => {'by_date' => {'map' => ..., 'reduce' => ..., sha1-map => ..., sha1-reduce => ...} }
     def self.fs_design_docs(db_name)
       design_docs = {}
-      #path = "#{RAILS_ROOT}/db/views/#{db_name}"
-      Dir[path + "/**"].each do |dir|
+      Dir[path(db_name) + "/**"].each do |dir|
         view_path = dir.match(/\.js$/) ? dir : nil
         design_name = view_path ? db_name : dir.split('/').last
         
         design_doc = design_docs[design_name.to_sym] || {'_id' => "_design/#{design_name}", 'views' => {}}
         
         if view_path
-          fs_view(design_doc, view_path)
+          design_doc = fs_view(design_doc, view_path)
         else
           Dir[dir + "/*.js"].each do |view_path|
-            fs_view(design_doc, view_path)
+            design_doc = fs_view(design_doc, view_path)
           end
         end
         
         design_docs[design_name.to_sym] = design_doc
       end
+      
+      design_docs.each do |db, design|
+        design["views"].each do |view, functions|
+          if !functions["reduce"].nil?
+            raise "#{view}-reduce was found without a corresponding map function." if functions["map"].nil?
+          end
+        end
+      end
       design_docs
     end
     
     def self.fs_view(design_doc, view_path)
-      # pp design_doc
-      # pp view_path
-      
       filename = view_path.split('/').last.split('.').first
       name, type = filename.split('-')
       
       file = open(view_path)
-      content = file.read.gsub(/\t/, "  ") # todo: why is this needed?
+      content = file.read
       file.close
       
       sha1 = Digest::SHA1.hexdigest(content)
