@@ -6,173 +6,222 @@ class JsViewTes < Test::Unit::TestCase
     setup do
       unload_const('TestView')
       ::TestView = create_const(CouchPotato::JsViewSource)
+      
+      def gen_str(size=10)
+        (0...size).map{ ('a'..'z').to_a[rand(26)] }.join
+      end
+      
+      def gen_path(size=4)
+        "/" + Array.new(size).collect{ gen_str }.join("/")
+      end
     end
         
     should "infer a single database name from the file system" do
-      stub(TestView).path {File.dirname(__FILE__) + "/../../test/fixtures/fs_database/views"}
-      assert_equal TestView.fs_database_names, ['offers']
+      path = gen_path
+      database = gen_str
+      stub(TestView).path { path }
+      stub(Dir).[](TestView.path + "/**") { ["#{path}/#{database}"] }
+      
+      assert_equal TestView.fs_database_names, [database]
     end
     
     should "get a single design doc from couch server" do
-      mock(db = Object.new).get(anything, anything) {
-        {
-          "rows"=>[{
-            "doc"=>{
-              "language"=>"javascript",
-              "_rev"=>"1-728649903",
-              "_id"=>"_design/test",
-              "views"=>{
-                "test"=>{
-                  "map"=>"function(doc) {\n  emit(null, doc);\n}"
-                }
-              }
-            }
-          }]
-        }
+      name = gen_str
+      mock(db = Object.new).get(anything, anything) {{
+        "rows" => [{
+          "doc" => {
+            "_id"=>"_design/#{name}"
+          }
+        }]}
       }
       
-      assert_equal TestView.db_design_docs(db), {
-        :test=> {
-          "language"=>"javascript",
-          "_id"=>"_design/test",
-          "_rev"=>"1-728649903",
-          "views"=>{
-            "test"=>{
-              "map"=>"function(doc) {\n  emit(null, doc);\n}"
-            }
-          }
-        }
-      }
-    end
-    
-    should "get a single design doc from couch server and format it regardless of uncessary included data" do
-      mock(db = Object.new).get(anything, anything) {
-        {
-          "rows"=>[{
-            "doc"=>{
-              "language"=>"javascript",
-              "_rev"=>"1-728649903",
-              "_id"=>"_design/test",
-              "views"=>{
-                "test"=>{
-                  "map"=>"function(doc) {\n  emit(null, doc);\n}"
-                }
-              }
-            },
-            "id"=>"_design/test",
-            "value"=>{
-              "rev"=>"1-728649903"
-            },
-            "key"=>"_design/test"
-          }], 
-          "offset"=>0, 
-          "total_rows"=>1
-        }
-      }
-      
-      assert_equal TestView.db_design_docs(db), {
-        :test=> {
-          "language"=>"javascript",
-          "_id"=>"_design/test",
-          "_rev"=>"1-728649903",
-          "views"=>{
-            "test"=>{
-              "map"=>"function(doc) {\n  emit(null, doc);\n}"
-            }
-          }
-        }
-      }
+      expected = { name.to_sym => { "_id"=>"_design/#{name}" } }
+      assert_equal TestView.db_design_docs(db), expected
     end
     
     context "with views in the local filesystem" do
       setup do
-        @path = "/Users/shoulda/couch_potato/views"
-        @db_name = "offers"
+        @path = gen_path
+        
+        class VirtualFile
+          def initialize(content)
+            @content = content
+          end
+          
+          def read
+            @content
+          end
+          
+          def close
+            @content = nil
+          end
+        end
+      end
+      
+      should "raise an exception when an invalid javascript file path is provided for a local view" do
+        assert_raise Errno::ENOENT do
+          TestView.fs_view({}, "#{@path}/#{gen_str}-map.js")
+        end
+      end
+      
+      should "raise an exception when an empty hash is provided as a container for the local javascript" do
+        mock(TestView).open(anything) { VirtualFile.new("") }
+        assert_raise RuntimeError do
+          TestView.fs_view({}, "#{@path}/#{gen_str}-map.js")
+        end
+      end
+      
+      should "raise an exception if a passed javascript does not contain a map or reduce tag" do
+        mock(TestView).open(anything) { VirtualFile.new("") }
+        assert_raise RuntimeError do
+          TestView.fs_view({}, "#{@path}/#{gen_str}.js")
+        end
+      end
+      
+      should "create a proper hash containing the information from a single javascript (view) file" do
+        content = gen_str
+        view_name = gen_str
+        view_type = "map"
+        file_path = "#{@path}/#{view_name}-#{view_type}.js"
+        sha = gen_str(40)
+        
+        mock(TestView).open(anything) { VirtualFile.new(content) }
+        mock(Digest::SHA1).hexdigest(anything) { sha }
+        
+        expected = { "views" => {
+          view_name => {
+            view_type => content,
+            "sha1-#{view_type}" => sha
+          }
+        }}
+        assert_equal TestView.fs_view({'views' => {}}, file_path), expected
+      end
+      
+      should "properly accrue the views for a given design document/database(without any design docs)" do
+        design_name = gen_str
+        views = {
+          gen_str => {:map => { :content => gen_str, :sha1 => gen_str(40) },
+                      :reduce => { :content => gen_str, :sha1 => gen_str(40) }},
+          gen_str => {:map => { :content => gen_str, :sha1 => gen_str(40) },
+                      :reduce => { :content => gen_str, :sha1 => gen_str(40) }}
+        }
+        
+        accrued_hash = {'views' => {}}
+        views.each do |view_name, view_types|
+          view_types.each do |type, view_data|
+            stub(TestView).open { VirtualFile.new(view_data[:content]) }
+            path = "#{@path}/#{design_name}/#{view_name}-#{type.to_s}.js"
+            stub(Digest::SHA1).hexdigest { view_data[:sha1] }
+            TestView.fs_view(accrued_hash, path)
+          end
+        end
+        
+        expected = {'views' => {}}
+        views.each do |view_name, view_types|
+          expected['views'][view_name] ||= {}
+          view_types.each do |type, view_data|
+            expected['views'][view_name][type.to_s] = view_data[:content]
+            expected['views'][view_name]["sha1-#{type.to_s}"] = view_data[:sha1]
+          end
+        end
+        assert_equal accrued_hash, expected
+      end
+    end
+    
+    context "with design documents in the local filesystem that need to be aggregated" do
+      setup do
+        @path = gen_path
+        @db_name = gen_str
         stub(TestView).path { @path + "/" + @db_name }
         
-        def format_views(views, doc=nil)
+        def assign_path(views, design_doc=nil)
           views.map do |view|
-            [@path, @db_name, doc, view].compact.join("/")
+            [@path, @db_name, design_doc, view].compact.join("/")
           end
         end
       end
     
-      should "get a hash of a design doc under a specific database with no design folders in the filesystem without a reduce" do
-        views = ["view-map.js"]
-        views_path = format_views(views)
-      
-        stub(Dir).[](TestView.path + "/**") { views_path }      
-        fs_view_ret = {
-          "_id"=>"_design/offers",
+      should "get a hash of a design doc under a specific database with no design folders in the filesystem; no reduce functions" do
+        view = gen_str
+        view_components = ["#{view}-map.js"]
+
+        stub(Dir).[](TestView.path + "/**") { assign_path(view_components) }
+        fs_view_return = {
           "views"=> {
-            "view"=> {
-              "map"=>"function(doc) {\n  emit(null, doc);\n}",
-              "sha1-map"=>"d98e88e9ce74299293daa529eee229bcbfc40ae2"
-            }
-          }}
-          
-        stub(TestView).fs_view {fs_view_ret}
-        assert_equal TestView.fs_design_docs(@db_name), { @db_name.to_sym => fs_view_ret }
+            "#{view}"=> {}
+          }
+        }
+        
+        stub(TestView).fs_view { fs_view_return }
+        expected = { @db_name.to_sym => fs_view_return }
+        assert_equal TestView.fs_design_docs(@db_name), expected
       end
       
-      should "get a hash of a design doc under a specific database with no design folders in the filesystem with a reduce" do
-        views = ["view-map.js", "view-reduce.js"]
-        views_path = format_views(views)
+      should "get a hash of a design doc under a specific database with no design folders in the filesystem; one reduce function" do
+        view = gen_str
+        view_components = ["#{view}-map.js", "#{view}-reduce.js"]
       
-        stub(Dir).[](TestView.path + "/**") { views_path }
-        fs_view_ret = {
-          "_id"=>"_design/offers",
+        stub(Dir).[](TestView.path + "/**") { assign_path(view_components) }
+        fs_view_return = {
           "views"=> {
-            "view"=> {
-              "sha1-reduce"=>"d98e88e9ce74299293daa529eee229bcbfc40ae2",
-              "reduce"=>"function(doc) {\n  emit(null, doc);\n}",
-              "map"=>"function(doc) {\n  emit(null, doc);\n}",
-              "sha1-map"=>"d98e88e9ce74299293daa529eee229bcbfc40ae2"
-            }
-          }}
+            "#{view}"=> { "reduce"=>gen_str, "map"=>gen_str }
+          }
+        }
           
-        stub(TestView).fs_view {fs_view_ret}
-        assert_equal TestView.fs_design_docs(@db_name), { @db_name.to_sym => fs_view_ret }
+        stub(TestView).fs_view { fs_view_return }
+        expected = { @db_name.to_sym => fs_view_return }
+        assert_equal TestView.fs_design_docs(@db_name), expected
       end
       
       should "raise an exception when a reduce view is given without a corresponding map view under a specific database with no design folders" do
-        views = ["view-reduce.js"]
-        views_path = format_views(views)
+        view = gen_str
+        view_components = ["#{view}-reduce.js"]
       
-        stub(Dir).[](TestView.path + "/**") { views_path }
-        fs_view_ret = {
-          "_id"=>"_design/offers",
+        stub(Dir).[](TestView.path + "/**") { assign_path(view_components) }
+        fs_view_return = {
           "views"=> {
-            "view"=> {
-              "sha1-reduce"=>"d98e88e9ce74299293daa529eee229bcbfc40ae2",
-              "reduce"=>"function(doc) {\n  emit(null, doc);\n}"
-            }
-          }}
+            "#{view}"=> { "reduce"=>gen_str }
+          }
+        }
           
-        stub(TestView).fs_view {fs_view_ret}
+        stub(TestView).fs_view { fs_view_return }
         assert_raise RuntimeError do
           TestView.fs_design_docs(@db_name)
         end
       end
 
-      should "get a hash of design docs under a specific database with design folders" do
-        design_name = "feed_operations"
-        views = ["view-map.js"]
-        views_path = format_views(views, design_name)
-        
-        stub(Dir).[](TestView.path + "/**") { format_views([design_name]) }
-        stub(Dir).[]("#{TestView.path}/#{design_name}/*.js") { views_path }
-        fs_view_ret = {
-          "_id"=>"_design/#{design_name}",
-          "views"=> {
-            "view"=> {
-              "map"=>"function(doc) {\n  emit(null, doc);\n}",
-              "sha1-map"=>"d98e88e9ce74299293daa529eee229bcbfc40ae2"
-            }
-          }}
+      should "get a hash of design docs under a specific database with multiple design folders" do
+        design_names = [gen_str, gen_str]
+        views = design_names.inject({}) do |doc_views, doc_name|
+          view = gen_str
+          doc_views.merge!(doc_name => ["#{view}-map.js", "#{view}-reduce.js"])
+        end
+
+        mock(Dir).[](TestView.path + "/**") { assign_path(design_names) }
+        mock(Dir).[]("#{TestView.path}/#{design_names[0]}/*.js") { 
+          assign_path(views[design_names[0]], design_names[0]) }
+        mock(Dir).[]("#{TestView.path}/#{design_names[1]}/*.js") { 
+          assign_path(views[design_names[1]], design_names[1]) }
           
-        stub(TestView).fs_view {fs_view_ret}
-        assert_equal TestView.fs_design_docs(@db_name), { design_name.to_sym => fs_view_ret }
+        expected = {
+          design_names[0].to_sym => {
+            "views"=> {
+              views[design_names[0]].first.split("-").first => 
+                { "reduce"=>gen_str, "map"=>gen_str }
+            }
+          },
+          design_names[1].to_sym => {
+            "views"=> {
+              views[design_names[1]].first.split("-").first => 
+                { "reduce"=>gen_str, "map"=>gen_str }
+            }
+          }
+        }
+        
+        stub(TestView).fs_view(anything, /#{design_names[0]}/) { expected[design_names[0].to_sym] }
+        stub(TestView).fs_view(anything, /#{design_names[1]}/) { expected[design_names[1].to_sym] }
+        
+        assert_equal TestView.fs_design_docs(@db_name), expected
       end
     end
   end
