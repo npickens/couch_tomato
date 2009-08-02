@@ -6,9 +6,16 @@ class JsViewTes < Test::Unit::TestCase
     setup do
       unload_const('TestView')
       ::TestView = create_const(CouchPotato::JsViewSource)
-      
       def gen_str(size=10)
         (0...size).map{ ('a'..'z').to_a[rand(26)] }.join
+      end
+      
+      def gen_num(size=10)
+        (0...size).map{ (0..9).to_a[rand(10)] }.join
+      end
+      
+      def gen_alphanum(size=10)
+        (0...size).map{ ((0..9).to_a + ('a'..'z').to_a)[rand(36)] }.join
       end
       
       def gen_path(size=4)
@@ -21,7 +28,6 @@ class JsViewTes < Test::Unit::TestCase
       database = gen_str
       stub(TestView).path { path }
       stub(Dir).[](TestView.path + "/**") { ["#{path}/#{database}"] }
-      
       assert_equal TestView.fs_database_names, [database]
     end
     
@@ -83,7 +89,7 @@ class JsViewTes < Test::Unit::TestCase
         view_name = gen_str
         view_type = "map"
         file_path = "#{@path}/#{view_name}-#{view_type}.js"
-        sha = gen_str(40)
+        sha = gen_alphanum(40)
         
         mock(TestView).open(anything) { VirtualFile.new(content) }
         mock(Digest::SHA1).hexdigest(anything) { sha }
@@ -100,10 +106,10 @@ class JsViewTes < Test::Unit::TestCase
       should "properly accrue the views for a given design document/database(without any design docs)" do
         design_name = gen_str
         views = {
-          gen_str => {:map => { :content => gen_str, :sha1 => gen_str(40) },
-                      :reduce => { :content => gen_str, :sha1 => gen_str(40) }},
-          gen_str => {:map => { :content => gen_str, :sha1 => gen_str(40) },
-                      :reduce => { :content => gen_str, :sha1 => gen_str(40) }}
+          gen_str => {:map => { :content => gen_str, :sha1 => gen_alphanum(40) },
+                      :reduce => { :content => gen_str, :sha1 => gen_alphanum(40) }},
+          gen_str => {:map => { :content => gen_str, :sha1 => gen_alphanum(40) },
+                      :reduce => { :content => gen_str, :sha1 => gen_alphanum(40) }}
         }
         
         accrued_hash = {'views' => {}}
@@ -223,6 +229,134 @@ class JsViewTes < Test::Unit::TestCase
         
         assert_equal TestView.fs_design_docs(@db_name), expected
       end
+    end
+    
+    context "with documents in either the filesystem, the database, or both" do
+      setup do
+        @path = gen_path
+        @db_name = gen_str
+        
+        def gen_view_file(type)
+          {
+            type => gen_str,
+            "sha1-#{type}" => gen_alphanum(40)
+          }
+        end
+        
+        def gen_view(name, elements)
+          view = {name => {}}
+          elements.each do |element|
+            view[name].merge!(gen_view_file(element.to_s))
+          end
+          view
+        end
+        
+        def gen_design_doc(id, views)
+          design_doc = {
+            "_id" => "_design/#{id}",
+            "views" => {}
+          }
+          
+          views.each do |view, types|
+            design_doc["views"].merge!(gen_view(view, types))
+          end
+          design_doc
+        end
+        
+        def gen_db_hash(seed=rand(5))
+          design_docs = {}
+          types = [:map, :reduce]
+          (0..seed).each do
+            views = {}
+            (0..rand(seed)).each do
+              views.merge!(gen_str => types[0, rand(types.length) + 1])
+            end
+            design_name = gen_str
+            design_docs.merge!(design_name.to_sym => gen_design_doc(design_name, views))
+          end
+          design_docs
+        end
+      end
+      
+      should "delete a document from the database when the same document is found on the filesystem with no views" do
+        databases = [ gen_str ]
+        mock(TestView).fs_database_names { databases }
+        db = Object.new
+        stub(TestView).database! { db }
+        fs_db = gen_db_hash(1)
+        remote_db = fs_db.clone
+        remote_db.values.each { |doc| doc.merge!("_rev" => gen_num) }
+        fs_db[fs_db.keys.first]["views"] = {}
+        
+        mock(TestView).fs_design_docs(anything) { fs_db }
+        mock(TestView).db_design_docs(anything) { remote_db }
+
+        mock(db).delete_doc(anything) {}
+        stub(db).save_doc {}
+        
+        TestView.push(true)
+      end
+      
+      should "create an empty remote db if an empty db folder is found in the file system" do
+        db = Object.new
+        mock(TestView).fs_database_names { [gen_str] }
+        mock(TestView).database!(anything) { db }
+        
+        fs_single_doc_name = gen_str
+        fs_db = {
+          fs_single_doc_name.to_sym => {
+            "_id" => "_design/#{fs_single_doc_name}", 
+            "views" => {}}
+        }
+        remote_db = gen_db_hash(2)
+        remote_db.values.each { |doc| doc.merge!("_rev" => gen_num) }
+        mock(TestView).fs_design_docs(anything) { fs_db }
+        mock(TestView).db_design_docs(anything) { remote_db }
+        dont_allow(db).delete_doc(anything) {}
+        dont_allow(db).save_doc(anything) {}
+        
+        TestView.push(true)
+      end
+      
+      should "not update documents on the server if both file system and server documents are identical" do
+        db = Object.new
+        mock(TestView).fs_database_names { [gen_str] }
+        mock(TestView).database!(anything) { db }
+        
+        fs_db = gen_db_hash(1)
+        remote_db = fs_db.clone
+        remote_db.values.each { |doc| doc.merge!("_rev" => gen_num) }
+        
+        mock(TestView).fs_design_docs(anything) { fs_db }
+        mock(TestView).db_design_docs(anything) { remote_db }
+        dont_allow(db).delete_doc(anything) {}
+        dont_allow(db).save_doc(anything) {}
+        
+        TestView.push(true)
+      end
+      
+      should "properly added all new documents seen on the file system to the remote system." do
+        db = Object.new
+        mock(TestView).fs_database_names { [gen_str] }
+        mock(TestView).database!(anything) { db }
+        
+        fs_db = gen_db_hash(2)
+        remote_db = gen_db_hash(2)
+        remote_db.values.each { |doc| doc.merge!("_rev" => gen_num) }
+        
+        mock(TestView).fs_design_docs(anything) { fs_db }
+        mock(TestView).db_design_docs(anything) { remote_db }
+        dont_allow(db).delete_doc(anything) {}
+        mock(db).save_doc(anything).times(fs_db.length) {}
+        
+        TestView.push(true)
+      end
+    end
+    
+    should "properly read fs view, create a remote database\
+        if necessary, and copy all the local views to the remote site (database)" do
+      stub(TestView).path { "#{File.dirname(__FILE__)}/../../test/integration" }
+      #TODO: Complete this integration test.
     end
   end
 end

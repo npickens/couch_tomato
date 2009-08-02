@@ -6,29 +6,46 @@ module CouchPotato
     # todo: provide a 'dirty?' method that can be called in an initializer and warn the developer that view are out of sync
     # todo: provide more granular information about which views are being modified
     # todo: limitation (bug?) where if you remove a database's views entirely from the file system, view's will not be removed from the database as may be expected
-    def self.push
+    def self.push(silent=false)
       fs_database_names.each do |database_name|
         db = database!(database_name)
         
         fs_docs = fs_design_docs(database_name)
         db_docs = db_design_docs(db)
         
-        fs_docs.each do |design_name, doc|
-          if db_docs.keys.include?(design_name)
-            doc['_id'] = db_docs[design_name]['_id']
-            doc['_rev'] = db_docs[design_name]['_rev']
+        fs_docs.each do |design_name, fs_doc|
+          db_doc = db_docs[design_name]
+
+          if db_doc
+            fs_doc['_id'] = db_doc['_id']
+            fs_doc['_rev'] = db_doc['_rev']
           end
-          
-          if doc['views'].empty?
-            next unless doc['_rev']
-            puts "DELETE #{doc['_id']}"
-            db.delete_doc(doc)
+
+          if fs_doc['views'].empty?
+            next unless fs_doc['_rev']
+            puts "DELETE #{fs_doc['_id']}" unless silent
+            db.delete_doc(fs_doc)
           else
-            puts "UPDATE #{doc['_id']}"
-            db.save_doc(doc)
+            if changed_views?(fs_doc, db_doc)
+              puts "UPDATE #{fs_doc['_id']}" unless silent
+              db.save_doc(fs_doc)
+            end
           end
         end
       end
+    end
+    
+    def self.changed_views?(fs_doc, db_doc)
+      return true if db_doc.nil?
+
+      fs_doc['views'].each do |name, fs_view|
+        db_view = db_doc['views'][name]
+        %w(map reduce).each do |method|
+          return true if db_view.nil? || db_view["sha1-#{method}"] != fs_view["sha1-#{method}"]
+        end
+      end
+
+      return false
     end
     
     def self.diff
