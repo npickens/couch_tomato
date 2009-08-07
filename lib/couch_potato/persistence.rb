@@ -14,20 +14,20 @@ module CouchPotato
   module Persistence
     module Nested
       include CouchPotato::Persistence::Base
-      
+
       def self.included(base)
         base.send :include, Properties, Callbacks, Validation#, Json#, CouchPotato::View::CustomViews
-        base.send :include, DirtyAttributes
+        # base.send :include, DirtyAttributes
         # base.send :include, MagicTimestamps
-        
+
         base.extend ClassMethods
       end
-      
+
       def to_json(*args)
         to_hash.to_json(*args)
         # to_json(*args)
       end
-      
+
       # returns all the attributes, the ruby class and the _id and _rev of a model as a Hash
       def to_hash
         (self.class.properties).inject({}) do |props, property|
@@ -35,9 +35,9 @@ module CouchPotato
           props
         end
       end
-      
+
       private
-      
+
       module ClassMethods
         # creates a model instance from JSON
         def json_create(json, meta={})
@@ -51,14 +51,14 @@ module CouchPotato
           instance
         end
       end
-      
+
     end
-    
+
     include CouchPotato::Persistence::Base
 
     def self.included(base)
       base.send :include, Properties, Callbacks, Validation, Json#, CouchPotato::View::CustomViews
-      base.send :include, DirtyAttributes
+      # base.send :include, DirtyAttributes
       base.send :include, MagicTimestamps
       base.class_eval do
         attr_accessor :_id, :_rev, :_attachments, :_deleted
@@ -79,7 +79,7 @@ module CouchPotato
     def to_param
       _id
     end
-    
+
   end
-  
+
 end

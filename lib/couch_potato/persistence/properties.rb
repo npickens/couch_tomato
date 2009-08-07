@@ -30,7 +30,7 @@ module CouchPotato
         def json_create(json, meta={}) #:nodoc:
           return if json.nil?
           instance = super
-          instance.send(:assign_attribute_copies_for_dirty_tracking)
+          # instance.send(:assign_attribute_copies_for_dirty_tracking)
           instance.metadata = meta
           instance
         end
