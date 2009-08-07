@@ -1,7 +1,7 @@
 module CouchPotato
   module Persistence
     class SimpleProperty  #:nodoc:
-      attr_accessor :name, :type, :is_array
+      attr_accessor :name, :type
       JSON_TYPES = [String, Integer, Hash, Array, Fixnum, Float]
 
       def initialize(owner_clazz, name, options = {})
@@ -9,13 +9,12 @@ module CouchPotato
           raise "#{options[:type]} is a native JSON type, only custom types should be specified"
         end
 
-        if !options[:type] && options[:is_array]
-          raise 'Array option should only be used with custom type'
+        if options[:type].kind_of?(Array) && options[:type].empty?
+          raise "property defined with `:type => []` but expected `:type => [SomePersistableType]`"
         end
 
         self.name = name
         self.type = options[:type]
-        self.is_array = options[:is_array]
         owner_clazz.class_eval do
           attr_reader name, "#{name}_was"
 
@@ -60,10 +59,10 @@ module CouchPotato
       def build(object, json)
         value = json[name.to_s] || json[name.to_sym]
 
-        if type && is_array
+        if type.kind_of? Array
           typecasted_value = []
           value.each do |val|
-            el = type.json_create val
+            el = type[0].json_create val
             typecasted_value << el
           end
         else
