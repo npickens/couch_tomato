@@ -1,6 +1,7 @@
 require 'digest/md5'
 require File.dirname(__FILE__) + '/database'
 require File.dirname(__FILE__) + '/persistence/properties'
+require File.dirname(__FILE__) + '/persistence/base'
 require File.dirname(__FILE__) + '/persistence/magic_timestamps'
 require File.dirname(__FILE__) + '/persistence/callbacks'
 require File.dirname(__FILE__) + '/persistence/json'
@@ -12,7 +13,8 @@ require File.dirname(__FILE__) + '/persistence/validation'
 module CouchPotato
   module Persistence
     module Nested
-      include Base
+      include CouchPotato::Persistence::Base
+      
       def self.included(base)
         base.send :include, Properties, Callbacks, Validation#, Json#, CouchPotato::View::CustomViews
         base.send :include, DirtyAttributes
@@ -52,7 +54,7 @@ module CouchPotato
       
     end
     
-    include Base
+    include CouchPotato::Persistence::Base
 
     def self.included(base)
       base.send :include, Properties, Callbacks, Validation, Json#, CouchPotato::View::CustomViews
