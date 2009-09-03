@@ -42,12 +42,12 @@ Instead of views being declared and defined inside a model, we'll define views o
 
 Rather than having Ruby generate JavaScript or writing JavaScript in our Ruby code as a string, we prefer to define our views in files on the file system:
 
-    RAILS_ROOT/db/views/users/*-map.js
-    RAILS_ROOT/db/views/users/*-reduce.js
+    RAILS_ROOT/couchdb/views/users/*-map.js
+    RAILS_ROOT/couchdb/views/users/*-reduce.js
     
 The reduce is optional. If you want to define views in a specific design document (called 'lazy'), you can do so:
 
-    RAILS_ROOT/db/views/users/lazy/*.js
+    RAILS_ROOT/couchdb/views/users/lazy/*.js
 
 We'll use a generator to take some of the grunt work out:
 
