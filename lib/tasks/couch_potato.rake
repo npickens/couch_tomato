@@ -40,8 +40,8 @@ namespace :couch_potato do
 
     desc 'Runs the "up" for a given migration VERSION.'
     task :up => :environment do
-      version = ENV["VERSION"] ? ENV["VERSION"].to_i : nil
-      raise "VERSION is required" unless version
+      version = ENV['VERSION'] ? ENV['VERSION'].to_i : nil
+      raise 'VERSION is required' unless version
 
       databases do |db, dir|
         CouchPotato::Migrator.run(:up, db, dir, version)
@@ -50,8 +50,8 @@ namespace :couch_potato do
 
     desc 'Runs the "down" for a given migration VERSION.'
     task :down => :environment do
-      version = ENV["VERSION"] ? ENV["VERSION"].to_i : nil
-      raise "VERSION is required" unless version
+      version = ENV['VERSION'] ? ENV['VERSION'].to_i : nil
+      raise 'VERSION is required' unless version
 
       databases do |db, dir|
         CouchPotato::Migrator.run(:down, db, dir, version)
@@ -70,6 +70,29 @@ namespace :couch_potato do
   task :forward => :environment do
     databases do |db, dir|
       CouchPotato::Migrator.forward(db, dir, ENV['STEP'] ? ENV['STEP'].to_i : 1)
+    end
+  end
+
+  desc 'Replicates couch databases'
+  task :replicate => :environment do
+    local_server = "http://#{APP_CONFIG['couchdb_address']}:#{APP_CONFIG['couchdb_port']}"
+    src_server = (ENV['SRC_SERVER'] || local_server).gsub(/\s*\/\s*$/, '')
+    dst_server = (ENV['DST_SERVER'] || local_server).gsub(/\s*\/\s*$/, '')
+
+    src_db = ENV['DB']
+    dst_db = ENV['DST_DB'] || (src_server == dst_server ? "#{src_db}_bak" : src_db)
+
+    replicator = CouchPotato::Replicator.new(src_server, dst_server)
+
+    if src_db
+      puts "== Replicating '#{src_server}/#{src_db}' to '#{dst_server}/#{dst_db}'"
+      replicator.replicate(src_db, dst_db)
+    elsif src_server == dst_server
+      puts "== Replicating all databases at '#{src_server}' using '_bak' suffix for replicated database names"
+      replicator.replicate_all('_bak')
+    else
+      puts "== Replicating all databases from '#{src_server}' to '#{dst_server}'"
+      replicator.replicate_all
     end
   end
 
