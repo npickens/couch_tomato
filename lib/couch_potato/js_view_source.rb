@@ -116,23 +116,16 @@ module CouchPotato
     # :clicks => {'by_date' => {'map' => ..., 'reduce' => ..., sha1-map => ..., sha1-reduce => ...} }
     def self.fs_design_docs(db_name)
       design_docs = {}
+
       path = "#{RAILS_ROOT}/couchdb/views/#{db_name}"
-      Dir[path + "/**"].each do |dir|
-        view_path = dir.match(/\.js$/) ? dir : nil
-        design_name = view_path ? db_name : dir.split('/').last
+      Dir[path + "/**"].each do |file|
+        throw "Invalid filename '#{File.basename(file)}': expecting '-map.js' or '-reduce.js' suffix" unless file.match(/-((map)|(reduce))\.js$/)
 
-        design_doc = design_docs[design_name.to_sym] || {'_id' => "_design/#{design_name}", 'views' => {}}
-
-        if view_path
-          fs_view(design_doc, view_path)
-        else
-          Dir[dir + "/*.js"].each do |view_path|
-            fs_view(design_doc, view_path)
-          end
-        end
-
-        design_docs[design_name.to_sym] = design_doc
+        design_name = db_name.to_sym
+        design_docs[design_name] ||= {'_id' => "_design/#{db_name}", 'views' => {}}
+        fs_view(design_docs[design_name], file)
       end
+
       design_docs
     end
 
