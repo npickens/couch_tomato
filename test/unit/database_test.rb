@@ -23,7 +23,7 @@ class DatabaseTes < Test::Unit::TestCase
     should "assign the localhost as server if none is given" do
       @db =  Object.new
       stub(TestDb).database_name{'hello-world'}
-      stub(TestDb).couchrest_db{@db}
+      stub(TestDb).database{@db}
       stub(@db).info{1}
       
       TestDb.class_eval do
@@ -45,7 +45,7 @@ class DatabaseTes < Test::Unit::TestCase
       setup do
         stub(TestDb).database_name{'hello-world'}
         stub(TestDb).database_server{'http://127.0.0.1:5984/'}
-        stub(TestDb.couchrest_db).info{1}
+        stub(TestDb.database).info{1}
       end
     
       should "raise an exception if no nemonic is given for the view" do
@@ -95,7 +95,7 @@ class DatabaseTes < Test::Unit::TestCase
             stub(@document).valid?{1}
             stub(@document).to_hash{1}
 
-            stub(TestDb.couchrest_db).save_doc{{'rev' => '1', 'id' => '123', }}
+            stub(TestDb.database).save_doc{{'rev' => '1', 'id' => '123', }}
             stub(@document)._rev=('1')
             
             mock(@document).run_callbacks(:before_validation_on_save)
@@ -146,25 +146,25 @@ class DatabaseTes < Test::Unit::TestCase
         end
         
         should "return nil if no document matching the given id is found" do
-          stub(TestDb.couchrest_db).get('123456789'){raise RestClient::ResourceNotFound}
+          stub(TestDb.database).get('123456789'){raise RestClient::ResourceNotFound}
           document = TestDb.load_doc '123456789'
           assert_equal document, nil
         end
 
         should "return a hash if :model => :raw is given as an option" do
-          stub(TestDb.couchrest_db).get('123456789'){{:key => "value", :key2 => "value2", }}
+          stub(TestDb.database).get('123456789'){{:key => "value", :key2 => "value2", }}
           document = TestDb.load_doc '123456789', :model => :raw
           assert_equal document, {:key => "value", :key2 => "value2", }
         end
         
         should "return a hash if the document does not specify a class" do
-          stub(TestDb.couchrest_db).get('123456789'){{:key => "value", :key2 => "value2", }}
+          stub(TestDb.database).get('123456789'){{:key => "value", :key2 => "value2", }}
           document = TestDb.load_doc '123456789'
           assert_equal document, {:key => "value", :key2 => "value2", }
         end
         
         should "return the right class of object if one is specified in the document" do
-          stub(TestDb.couchrest_db).get('123456789'){{'ruby_class' => 'Object', :key2 => "value2", }}
+          stub(TestDb.database).get('123456789'){{'ruby_class' => 'Object', :key2 => "value2", }}
           document = TestDb.load_doc '123456789'
           # document = TestDb.load_doc '123456789', :model => Object
           
@@ -172,7 +172,7 @@ class DatabaseTes < Test::Unit::TestCase
         end
         
         should "find classes namespeced within other classes" do
-          stub(TestDb.couchrest_db).get('123456789'){{'ruby_class' => 'Foo::Bar', :key2 => "value2", }}
+          stub(TestDb.database).get('123456789'){{'ruby_class' => 'Foo::Bar', :key2 => "value2", }}
           document = TestDb.load_doc '123456789'
           
           assert_equal document.class, Foo::Bar

@@ -120,7 +120,7 @@ class PropertyTes < Test::Unit::TestCase
 
           stub(@document).valid?{true}
 
-          stub(TestDb.couchrest_db).save_doc{{'rev' => '1', 'id' => '123'}}
+          stub(TestDb.database).save_doc{{'rev' => '1', 'id' => '123'}}
 
       end
 
