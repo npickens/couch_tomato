@@ -113,15 +113,15 @@ class PropertyTes < Test::Unit::TestCase
 
         end
 
-          unload_const('TestDb')
-          ::TestDb = create_const(CouchPotato::Database)
+        unload_const('TestDb')
+        ::TestDb = create_const(CouchPotato::Database)
+        TestDb.couchrest_db = Object.new
 
-          @document = Comment.new :title => "My Title"
+        @document = Comment.new :title => "My Title"
 
-          stub(@document).valid?{true}
+        stub(@document).valid?{true}
 
-          stub(TestDb.database).save_doc{{'rev' => '1', 'id' => '123'}}
-
+        stub(TestDb.database).save_doc{{'rev' => '1', 'id' => '123'}}
       end
 
 

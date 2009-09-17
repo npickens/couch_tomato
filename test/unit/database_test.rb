@@ -36,8 +36,9 @@ class DatabaseTes < Test::Unit::TestCase
       assert_raise RestClient::RequestFailed do
         TestDb.class_eval do
           name 'DoesNotExist'
-          server
+          server # 'http://127.0.0.1:5984/does-not-exist'
         end
+        TestDb.database
       end
     end
     
