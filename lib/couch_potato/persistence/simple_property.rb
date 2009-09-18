@@ -57,7 +57,8 @@ module CouchPotato
       end
 
       def build(object, json)
-        value = json[name.to_s] || json[name.to_sym]
+        value = json[name.to_s]
+        value = json[name.to_sym] if value.nil?
 
         if type.kind_of? Array
           typecasted_value = []
