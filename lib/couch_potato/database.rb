@@ -72,6 +72,32 @@ module CouchPotato
       save_document(document) || raise(ValidationsFailedError.new(document.errors.full_messages))
     end
 
+    def self.bulk_save(documents)
+      doc_hashes = []
+
+      documents.each do |document|
+        document.run_callbacks :before_validation_on_save
+        document.run_callbacks(document.new? ? :before_validation_on_create : :before_validation_on_update)
+        return unless document.valid?
+        document.run_callbacks :before_save
+        document.run_callbacks(document.new? ? :before_create : :before_update)
+
+        doc_hashes << document.to_hash
+      end
+
+      res = self.couchrest_db.bulk_save(doc_hashes)
+
+      documents.each_with_index do |document, index|
+        is_new = document.new?
+        document._id = res[index]['id'] if is_new
+        document._rev = res[index]['rev']
+        document.run_callbacks :after_save
+        document.run_callbacks(is_new ? :after_create : :after_update)
+      end
+
+      true
+    end
+
     def self.destroy_document(document)
       document.run_callbacks :before_destroy
       document._deleted = true
