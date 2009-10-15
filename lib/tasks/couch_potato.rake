@@ -75,9 +75,7 @@ namespace :couch_potato do
 
   desc 'Replicates couch databases'
   task :replicate => :environment do
-    local_server = "http://#{APP_CONFIG['couchdb_address']}:#{APP_CONFIG['couchdb_port']}"
-    src_server = (ENV['SRC_SERVER'] || local_server).gsub(/\s*\/\s*$/, '')
-    dst_server = (ENV['DST_SERVER'] || local_server).gsub(/\s*\/\s*$/, '')
+    src_server, dst_server = servers
 
     src_db = ENV['DB']
     dst_db = ENV['DST_DB'] || (src_server == dst_server ? "#{src_db}_bak" : src_db)
@@ -99,9 +97,7 @@ namespace :couch_potato do
   namespace :replicate do
     desc 'Replicate databases between app environments'
     task :env => :environment do
-      local_server = "http://#{APP_CONFIG['couchdb_address']}:#{APP_CONFIG['couchdb_port']}"
-      src_server = (ENV['SRC_SERVER'] || local_server).gsub(/\s*\/\s*$/, '')
-      dst_server = (ENV['DST_SERVER'] || local_server).gsub(/\s*\/\s*$/, '')
+      src_server, dst_server = servers
 
       src_env = ENV['SRC_ENV'] || 'production'
       dst_env = ENV['SRC_ENV'] || 'development'
@@ -109,6 +105,16 @@ namespace :couch_potato do
       replicator = CouchPotato::Replicator.new(src_server, dst_server)
       replicator.replicate_env(src_env, dst_env, ENV['PREFIX'])
     end
+  end
+
+  private
+
+  def servers
+    local_server = "http://#{APP_CONFIG['couchdb_address']}:#{APP_CONFIG['couchdb_port']}"
+    src_server = (ENV['SRC_SERVER'] || local_server).gsub(/\s*\/\s*$/, '')
+    dst_server = (ENV['DST_SERVER'] || local_server).gsub(/\s*\/\s*$/, '')
+
+    return src_server, dst_server
   end
 
   def databases
