@@ -96,6 +96,21 @@ namespace :couch_potato do
     end
   end
 
+  namespace :replicate do
+    desc 'Replicate databases between app environments'
+    task :env => :environment do
+      local_server = "http://#{APP_CONFIG['couchdb_address']}:#{APP_CONFIG['couchdb_port']}"
+      src_server = (ENV['SRC_SERVER'] || local_server).gsub(/\s*\/\s*$/, '')
+      dst_server = (ENV['DST_SERVER'] || local_server).gsub(/\s*\/\s*$/, '')
+
+      src_env = ENV['SRC_ENV'] || 'production'
+      dst_env = ENV['SRC_ENV'] || 'development'
+
+      replicator = CouchPotato::Replicator.new(src_server, dst_server)
+      replicator.replicate_env(src_env, dst_env, ENV['PREFIX'])
+    end
+  end
+
   def databases
     dirs = ENV['DB'] ? ["couchdb/migrate/#{ENV['DB']}"] : Dir['couchdb/migrate/*']
     dirs.each do |dir|
