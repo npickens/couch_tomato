@@ -1,7 +1,7 @@
 module CouchPotato
   class Replicator
-    # Timeout for a single database replication (in seconds).
-    READ_TIMEOUT = 86400
+    # Timeout for a single database replication.
+    READ_TIMEOUT = 24 * 60 * 60 # 24 hours in seconds
 
     def initialize(src_server, dst_server = nil)
       @src_server = CouchRest::Server.new(src_server)
