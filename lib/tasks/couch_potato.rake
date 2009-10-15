@@ -100,7 +100,7 @@ namespace :couch_potato do
       src_server, dst_server = servers
 
       src_env = ENV['SRC_ENV'] || 'production'
-      dst_env = ENV['SRC_ENV'] || 'development'
+      dst_env = ENV['DST_ENV'] || 'development'
 
       replicator = CouchPotato::Replicator.new(src_server, dst_server)
       replicator.replicate_env(src_env, dst_env, ENV['PREFIX'])
