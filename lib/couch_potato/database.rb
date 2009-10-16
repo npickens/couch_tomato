@@ -16,6 +16,25 @@ module CouchPotato
     self.views = {}
     self.prefix_string = ''
 
+    def self.database
+      return self.couchrest_db if self.couchrest_db
+      
+      self.prefix_string ||= ''
+
+      tmp_prefix = self.prefix_string + '_'  unless self.prefix_string.empty?
+      tmp_server = self.database_server + '/' unless self.database_server.match(/\/$/)
+      tmp_suffix = '_' + Rails.env  if defined?(Rails)
+
+      self.couchrest_db = CouchRest.database("#{tmp_server}#{tmp_prefix}#{self.database_name}#{tmp_suffix}")
+      begin
+        self.couchrest_db.info
+      rescue RestClient::ResourceNotFound
+        raise "Database '#{tmp_prefix}#{self.database_name}#{tmp_suffix}' does not exist."
+      end
+      
+      self.couchrest_db
+    end
+
     def self.prefix (name)
        self.prefix_string =  name || ''
     end
@@ -27,19 +46,20 @@ module CouchPotato
     # TODO: specify db=>host mapping in yaml, and allow to differ per environment
     def self.server (route='http://127.0.0.1:5984/')
       self.database_server = route
-      self.prefix_string ||= ''
-
-      tmp_prefix = self.prefix_string + '_'  unless self.prefix_string.empty?
-      tmp_server = self.database_server + '/' unless self.database_server.match(/\/$/)
-      tmp_suffix = '_' + Rails.env  if defined?(Rails)
-
-
-      self.couchrest_db ||= CouchRest.database("#{tmp_server}#{tmp_prefix}#{self.database_name}#{tmp_suffix}")
-      begin
-        self.couchrest_db.info
-      rescue RestClient::ResourceNotFound
-        raise "Database '#{tmp_prefix}#{self.database_name}#{tmp_suffix}' does not exist."
-      end
+      
+      # self.prefix_string ||= ''
+      # 
+      # tmp_prefix = self.prefix_string + '_'  unless self.prefix_string.empty?
+      # tmp_server = self.database_server + '/' unless self.database_server.match(/\/$/)
+      # tmp_suffix = '_' + Rails.env  if defined?(Rails)
+      # 
+      # 
+      # self.couchrest_db ||= CouchRest.database("#{tmp_server}#{tmp_prefix}#{self.database_name}#{tmp_suffix}")
+      # begin
+      #   self.couchrest_db.info
+      # rescue RestClient::ResourceNotFound
+      #   raise "Database '#{tmp_prefix}#{self.database_name}#{tmp_suffix}' does not exist."
+      # end
 
     end
 
@@ -101,7 +121,7 @@ module CouchPotato
     def self.destroy_document(document)
       document.run_callbacks :before_destroy
       document._deleted = true
-      self.couchrest_db.delete_doc document.to_hash
+      self.database.delete_doc document.to_hash
       document.run_callbacks :after_destroy
       document._id = nil
       document._rev = nil
@@ -115,7 +135,7 @@ module CouchPotato
         # instance = Class.const_get(json['ruby_class']).json_create json
         # # instance.database = self
         # instance
-        json = self.couchrest_db.get(id)
+        json = self.database.get(id)
         if options[:model] == :raw || !json['ruby_class']
           {}.merge(json)
         else
@@ -173,7 +193,7 @@ module CouchPotato
       return unless document.valid?
       document.run_callbacks :before_save
       document.run_callbacks :before_create
-      res = self.couchrest_db.save_doc document.to_hash
+      res = self.database.save_doc document.to_hash
       document._rev = res['rev']
       document._id = res['id']
       document.run_callbacks :after_save
@@ -187,7 +207,7 @@ module CouchPotato
       return unless document.valid?
       document.run_callbacks :before_save
       document.run_callbacks :before_update
-      res = self.couchrest_db.save_doc document.to_hash
+      res = self.database.save_doc document.to_hash
       document._rev = res['rev']
       document.run_callbacks :after_save
       document.run_callbacks :after_update
@@ -195,7 +215,7 @@ module CouchPotato
     end
 
     def self.query_view(name,parameters)
-      self.couchrest_db.view "#{self.views[name][:design_doc]}/#{self.views[name][:view_name]}", parameters
+      self.database.view "#{self.views[name][:design_doc]}/#{self.views[name][:view_name]}", parameters
     end
 
     def self.process_results(name, results, options ={})
