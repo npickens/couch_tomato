@@ -1,7 +1,7 @@
 require File.dirname(__FILE__) + '/../spec_helper'
 
 class Tree
-  include CouchPotato::Persistence
+  include CouchTomato::Persistence
   before_validation :water!
   before_validation lambda {|tree| tree.root_count += 1 }
   

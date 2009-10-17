@@ -1,4 +1,4 @@
-module CouchPotato
+module CouchTomato
   module Persistence
     class BelongsToProperty #:nodoc:
       attr_accessor :name

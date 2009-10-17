@@ -1,6 +1,6 @@
 require 'digest/sha1'
 
-module CouchPotato
+module CouchTomato
   class JsViewSource
     # todo: provide a 'dirty?' method that can be called in an initializer and warn the developer that view are out of sync
     # todo: provide more granular information about which views are being modified

@@ -1,4 +1,4 @@
-module CouchPotato
+module CouchTomato
   class IrreversibleMigration < StandardError#:nodoc:
   end
 

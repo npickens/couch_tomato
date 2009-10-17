@@ -1,10 +1,10 @@
 require File.dirname(__FILE__) + '/../spec_helper'
 
-describe CouchPotato::View::CustomViews do
+describe CouchTomato::View::CustomViews do
   
   class MyViewSpec; end
   class ModelWithView
-    include CouchPotato::Persistence
+    include CouchTomato::Persistence
     view :all, :type => MyViewSpec
   end
   

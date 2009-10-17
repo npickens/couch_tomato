@@ -1,7 +1,7 @@
 require File.dirname(__FILE__) + '/spec_helper'
 
 class CallbackRecorder
-  include CouchPotato::Persistence
+  include CouchTomato::Persistence
   
   property :required_property
   
@@ -40,7 +40,7 @@ end
 describe "multiple callbacks at once" do
 
   class Monkey
-    include CouchPotato::Persistence
+    include CouchTomato::Persistence
     attr_accessor :eaten_banana, :eaten_apple
     
     before_create :eat_apple, :eat_banana
@@ -57,7 +57,7 @@ describe "multiple callbacks at once" do
   end
   it "should run all callback methods given to the callback method call" do
     monkey = Monkey.new
-    CouchPotato.database.save_document! monkey
+    CouchTomato.database.save_document! monkey
     monkey.eaten_banana.should be_true
     monkey.eaten_apple.should be_true
   end
@@ -68,7 +68,7 @@ describe 'create callbacks' do
   before(:each) do
     @recorder = CallbackRecorder.new
     couchrest_database = stub 'couchrest_database', :save_doc => {'id' => '1', 'rev' => '2'}, :view => {'rows' => []}, :info => nil
-    @db = CouchPotato::Database.new(couchrest_database)
+    @db = CouchTomato::Database.new(couchrest_database)
   end
   
   describe "successful create" do
@@ -158,7 +158,7 @@ describe "update callbacks" do
     @recorder = CallbackRecorder.new :required_property => 1
     
     couchrest_database = stub 'couchrest_database', :save_doc => {'id' => '1', 'rev' => '2'}, :view => {'rows' => []}, :info => nil
-    @db = CouchPotato::Database.new(couchrest_database)
+    @db = CouchTomato::Database.new(couchrest_database)
     @db.save_document! @recorder
     
     @recorder.required_property = 2
@@ -245,7 +245,7 @@ describe "destroy callbacks" do
   before(:each) do
     @recorder = CallbackRecorder.new :required_property => 1
     couchrest_database = stub 'couchrest_database', :save_doc => {'id' => '1', 'rev' => '2'}, :delete_doc => nil, :view => {'rows' => []}, :info => nil
-    @db = CouchPotato::Database.new(couchrest_database)
+    @db = CouchTomato::Database.new(couchrest_database)
     @db.save_document! @recorder
     
     @recorder.callbacks.clear

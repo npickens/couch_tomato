@@ -1,13 +1,13 @@
 require File.dirname(__FILE__) + '/../test_helper'
-require File.dirname(__FILE__) + '/../../lib/couch_potato.rb'
+require File.dirname(__FILE__) + '/../../lib/couch_tomato.rb'
 
 class PropertyTes < Test::Unit::TestCase
-  context "A Model that will persist data using CouchPotato" do
+  context "A Model that will persist data using CouchTomato" do
     setup do
       unload_const('Comment')
       ::Comment = create_const
       Comment.class_eval do
-        include CouchPotato::Persistence
+        include CouchTomato::Persistence
       end
     end
 
@@ -114,7 +114,7 @@ class PropertyTes < Test::Unit::TestCase
         end
 
         unload_const('TestDb')
-        ::TestDb = create_const(CouchPotato::Database)
+        ::TestDb = create_const(CouchTomato::Database)
         TestDb.couchrest_db = Object.new
 
         @document = Comment.new :title => "My Title"
@@ -152,7 +152,7 @@ class PropertyTes < Test::Unit::TestCase
     context "and wants to delete (destroy) a particular document" do
       setup do
         unload_const('TestDb')
-        ::TestDb = create_const(CouchPotato::Database)
+        ::TestDb = create_const(CouchTomato::Database)
         TestDb.couchrest_db = Object.new
 
         @document = Comment.new

@@ -1,4 +1,4 @@
-module CouchPotato
+module CouchTomato
   class Replicator
     # Timeout for a single database replication.
     READ_TIMEOUT = 24 * 60 * 60 # 24 hours in seconds

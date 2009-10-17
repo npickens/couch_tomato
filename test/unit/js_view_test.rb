@@ -1,11 +1,11 @@
 require File.dirname(__FILE__) + '/../test_helper'
-require File.dirname(__FILE__) + '/../../lib/couch_potato.rb'
+require File.dirname(__FILE__) + '/../../lib/couch_tomato.rb'
 
 class JsViewTes < Test::Unit::TestCase
   context "A Javascript View class" do
     setup do
       unload_const('TestView')
-      ::TestView = create_const(CouchPotato::JsViewSource)
+      ::TestView = create_const(CouchTomato::JsViewSource)
       def gen_str(size=10)
         (0...size).map{ ('a'..'z').to_a[rand(26)] }.join
       end

@@ -3,7 +3,7 @@ require File.join(File.dirname(__FILE__), 'fixtures', 'address')
 require File.join(File.dirname(__FILE__), 'fixtures', 'person')
 
 class Watch
-  include CouchPotato::Persistence
+  include CouchTomato::Persistence
   
   property :time, :type => Time
 end
@@ -21,8 +21,8 @@ describe 'properties' do
   
   it "should persist a string" do
     c = Comment.new :title => 'my title'
-    CouchPotato.database.save_document! c
-    c = CouchPotato.database.load_document c.id
+    CouchTomato.database.save_document! c
+    c = CouchTomato.database.load_document c.id
     c.title.should == 'my title'
   end
   
@@ -31,7 +31,7 @@ describe 'properties' do
   # String.json_create method that expects a hash in the form `{'raw' => [0x61,
   # 0x62]}` where `[0x61, 0x62].pack => 'ab'`
   # 
-  # CouchPotato expects various `json_create` methods to accept a String (and
+  # CouchTomato expects various `json_create` methods to accept a String (and
   # return an instance). Currently, if `:type` is not specified, the type of the
   # value is assumed to be String and `json_create` is not called.
 
@@ -47,22 +47,22 @@ describe 'properties' do
   
   it "should persist a number" do
     c = Comment.new :title => 3
-    CouchPotato.database.save_document! c
-    c = CouchPotato.database.load_document c.id
+    CouchTomato.database.save_document! c
+    c = CouchTomato.database.load_document c.id
     c.title.should == 3
   end
   
   it "should persist a hash" do
     c = Comment.new :title => {'key' => 'value'}
-    CouchPotato.database.save_document! c
-    c = CouchPotato.database.load_document c.id
+    CouchTomato.database.save_document! c
+    c = CouchTomato.database.load_document c.id
     c.title.should == {'key' => 'value'}
   end
   
   it "should persist a Time object" do
     w = Watch.new :time => Time.now
-    CouchPotato.database.save_document! w
-    w = CouchPotato.database.load_document w.id
+    CouchTomato.database.save_document! w
+    w = CouchTomato.database.load_document w.id
     w.time.year.should == Time.now.year
   end
   
@@ -70,16 +70,16 @@ describe 'properties' do
     p = Person.new :name => 'Bob'
     a = Address.new :city => 'Denver'
     p.ship_address = a
-    CouchPotato.database.save_document! p
-    p = CouchPotato.database.load_document p.id
+    CouchTomato.database.save_document! p
+    p = CouchTomato.database.load_document p.id
     p.ship_address.should === a
   end
   
   it "should persist null for a null " do
     p = Person.new :name => 'Bob'
     p.ship_address = nil
-    CouchPotato.database.save_document! p
-    p = CouchPotato.database.load_document p.id
+    CouchTomato.database.save_document! p
+    p = CouchTomato.database.load_document p.id
     p.ship_address.should be_nil
   end
   

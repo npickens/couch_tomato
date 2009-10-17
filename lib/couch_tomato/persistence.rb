@@ -10,13 +10,13 @@ require File.dirname(__FILE__) + '/persistence/validation'
 
 
 
-module CouchPotato
+module CouchTomato
   module Persistence
     module Nested
-      include CouchPotato::Persistence::Base
+      include CouchTomato::Persistence::Base
 
       def self.included(base)
-        base.send :include, Properties, Callbacks, Validation#, Json#, CouchPotato::View::CustomViews
+        base.send :include, Properties, Callbacks, Validation#, Json#, CouchTomato::View::CustomViews
         # base.send :include, DirtyAttributes
         # base.send :include, MagicTimestamps
 
@@ -54,10 +54,10 @@ module CouchPotato
 
     end
 
-    include CouchPotato::Persistence::Base
+    include CouchTomato::Persistence::Base
 
     def self.included(base)
-      base.send :include, Properties, Callbacks, Validation, Json#, CouchPotato::View::CustomViews
+      base.send :include, Properties, Callbacks, Validation, Json#, CouchTomato::View::CustomViews
       # base.send :include, DirtyAttributes
       base.send :include, MagicTimestamps
       base.class_eval do

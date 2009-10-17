@@ -1,5 +1,5 @@
 class Address
-  include CouchPotato::Persistence
+  include CouchTomato::Persistence
   
   property :street
   property :city

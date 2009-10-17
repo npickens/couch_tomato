@@ -4,16 +4,16 @@ require 'spec'
 $:.unshift(File.dirname(__FILE__) + '/../lib')
 alias :doing :lambda
 
-require 'couch_potato'
+require 'couch_tomato'
 require File.dirname(__FILE__) + "/comment"
 
-CouchPotato::Config.database_name = 'couch_potato_test'
-CouchPotato::Config.database_server = 'http://127.0.0.1:5984/'
+CouchTomato::Config.database_name = 'couch_tomato_test'
+CouchTomato::Config.database_server = 'http://127.0.0.1:5984/'
 
 
 def recreate_db
-  CouchPotato.couchrest_database.delete! rescue nil
-  CouchPotato.couchrest_database.server.create_db CouchPotato::Config.database_name
+  CouchTomato.couchrest_database.delete! rescue nil
+  CouchTomato.couchrest_database.server.create_db CouchTomato::Config.database_name
 end
 recreate_db
 

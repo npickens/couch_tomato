@@ -1,7 +1,7 @@
 require File.dirname(__FILE__) + '/simple_property'
 require File.dirname(__FILE__) + '/belongs_to_property'
 
-module CouchPotato
+module CouchTomato
   module Persistence
     module Properties
       def self.included(base)

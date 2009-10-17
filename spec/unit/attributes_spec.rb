@@ -1,7 +1,7 @@
 require File.dirname(__FILE__) + '/../spec_helper'
 
 class Plant
-  include CouchPotato::Persistence
+  include CouchTomato::Persistence
   property :leaf_count
 end
 

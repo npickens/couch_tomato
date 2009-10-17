@@ -1,4 +1,4 @@
-module CouchPotato
+module CouchTomato
   module Persistence
     module Callbacks
       def self.included(base)
@@ -19,7 +19,7 @@ module CouchPotato
 
       # Runs all callbacks on a model with the given name, i.g. :after_create.
       # 
-      # This method is called by the CouchPotato::Database object when saving/destroying an object 
+      # This method is called by the CouchTomato::Database object when saving/destroying an object 
       def run_callbacks(name)
         return if skip_callbacks
         self.class.callbacks[name].uniq.each do |callback|

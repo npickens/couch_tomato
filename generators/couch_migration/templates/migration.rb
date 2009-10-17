@@ -1,4 +1,4 @@
-class <%= migration_class_name %> < CouchPotato::Migration
+class <%= migration_class_name %> < CouchTomato::Migration
   def self.up(doc)
     
   end

@@ -1,4 +1,4 @@
-module CouchPotato
+module CouchTomato
   module Persistence
     module MagicTimestamps #:nodoc:
       def self.included(base)

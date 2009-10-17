@@ -1,5 +1,5 @@
 class Comment
-  include CouchPotato::Persistence
+  include CouchTomato::Persistence
 
   validates_presence_of :title
 

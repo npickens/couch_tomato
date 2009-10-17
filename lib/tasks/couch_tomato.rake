@@ -1,12 +1,12 @@
-namespace :couch_potato do
+namespace :couch_tomato do
   desc 'Inserts the views into CouchDB'
   task :push => :environment do
-    CouchPotato::JsViewSource.push
+    CouchTomato::JsViewSource.push
   end
 
   desc 'Compares views in DB and the File System'
   task :diff => :environment do
-    CouchPotato::JsViewSource.diff
+    CouchTomato::JsViewSource.diff
   end
 
   desc 'Drops databases for the current RAILS_ENV'
@@ -19,7 +19,7 @@ namespace :couch_potato do
   desc 'Runs migrations'
   task :migrate => :environment do
     databases do |db, dir|
-      CouchPotato::Migrator.migrate(db, dir, ENV['VERSION'] ? ENV['VERSION'].to_i : nil)
+      CouchTomato::Migrator.migrate(db, dir, ENV['VERSION'] ? ENV['VERSION'].to_i : nil)
     end
   end
 
@@ -27,16 +27,16 @@ namespace :couch_potato do
     desc 'Rollbacks the database one migration and re migrate up. If you want to rollback more than one step, define STEP=x. Target specific version with VERSION=x.'
     task :redo => :environment do
       if ENV['VERSION']
-        Rake::Task['couch_potato:migrate:down'].invoke
-        Rake::Task['couch_potato:migrate:up'].invoke
+        Rake::Task['couch_tomato:migrate:down'].invoke
+        Rake::Task['couch_tomato:migrate:up'].invoke
       else
-        Rake::Task['couch_potato:rollback'].invoke
-        Rake::Task['couch_potato:migrate'].invoke
+        Rake::Task['couch_tomato:rollback'].invoke
+        Rake::Task['couch_tomato:migrate'].invoke
       end
     end
 
     desc 'Resets your database using your migrations for the current environment'
-    task :reset => ['couch_potato:drop', 'couch_potato:push', 'couch_potato:migrate']
+    task :reset => ['couch_tomato:drop', 'couch_tomato:push', 'couch_tomato:migrate']
 
     desc 'Runs the "up" for a given migration VERSION.'
     task :up => :environment do
@@ -44,7 +44,7 @@ namespace :couch_potato do
       raise 'VERSION is required' unless version
 
       databases do |db, dir|
-        CouchPotato::Migrator.run(:up, db, dir, version)
+        CouchTomato::Migrator.run(:up, db, dir, version)
       end
     end
 
@@ -54,7 +54,7 @@ namespace :couch_potato do
       raise 'VERSION is required' unless version
 
       databases do |db, dir|
-        CouchPotato::Migrator.run(:down, db, dir, version)
+        CouchTomato::Migrator.run(:down, db, dir, version)
       end
     end
   end
@@ -62,14 +62,14 @@ namespace :couch_potato do
   desc 'Rolls back to the previous version. Specify the number of steps with STEP=n'
   task :rollback => :environment do
     databases do |db, dir|
-      CouchPotato::Migrator.rollback(db, dir, ENV['STEP'] ? ENV['STEP'].to_i : 1)
+      CouchTomato::Migrator.rollback(db, dir, ENV['STEP'] ? ENV['STEP'].to_i : 1)
     end
   end
 
   desc 'Rolls forward to the next version. Specify the number of steps with STEP=n'
   task :forward => :environment do
     databases do |db, dir|
-      CouchPotato::Migrator.forward(db, dir, ENV['STEP'] ? ENV['STEP'].to_i : 1)
+      CouchTomato::Migrator.forward(db, dir, ENV['STEP'] ? ENV['STEP'].to_i : 1)
     end
   end
 
@@ -80,7 +80,7 @@ namespace :couch_potato do
     src_db = ENV['DB']
     dst_db = ENV['DST_DB'] || (src_server == dst_server ? "#{src_db}_bak" : src_db)
 
-    replicator = CouchPotato::Replicator.new(src_server, dst_server)
+    replicator = CouchTomato::Replicator.new(src_server, dst_server)
 
     if src_db
       puts "== Replicating '#{src_server}/#{src_db}' to '#{dst_server}/#{dst_db}'"
@@ -102,7 +102,7 @@ namespace :couch_potato do
       src_env = ENV['SRC_ENV'] || 'production'
       dst_env = ENV['DST_ENV'] || 'development'
 
-      replicator = CouchPotato::Replicator.new(src_server, dst_server)
+      replicator = CouchTomato::Replicator.new(src_server, dst_server)
       replicator.replicate_env(src_env, dst_env, ENV['PREFIX'])
     end
   end
@@ -121,7 +121,7 @@ namespace :couch_potato do
     dirs = ENV['DB'] ? ["couchdb/migrate/#{ENV['DB']}"] : Dir['couchdb/migrate/*']
     dirs.each do |dir|
       db_name = File.basename(dir)
-      db = CouchPotato::JsViewSource.database!(db_name)
+      db = CouchTomato::JsViewSource.database!(db_name)
       yield db, dir
     end
   end

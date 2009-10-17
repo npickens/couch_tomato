@@ -1,6 +1,6 @@
 require 'validatable'
 
-module CouchPotato
+module CouchTomato
   module Persistence
     module Validation
       def self.included(base)

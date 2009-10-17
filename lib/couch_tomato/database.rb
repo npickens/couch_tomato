@@ -1,7 +1,7 @@
 require 'couchrest'
 require 'pp'
 
-module CouchPotato
+module CouchTomato
   class Database
 
     class ValidationsFailedError < ::StandardError; end

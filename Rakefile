@@ -43,18 +43,18 @@ end
 #   rdoc.title    = 'Couch Potato'
 #   rdoc.options << '--line-numbers' << '--inline-source'
 #   rdoc.rdoc_files.include('README.md')
-#   rdoc.rdoc_files.include('lib/couch_potato.rb')
-#   rdoc.rdoc_files.include('lib/couch_potato/**/*.rb')
+#   rdoc.rdoc_files.include('lib/couch_tomato.rb')
+#   rdoc.rdoc_files.include('lib/couch_tomato/**/*.rb')
 # end
 # 
 # 
 # begin
 #   require 'jeweler'
 #   Jeweler::Tasks.new do |s|
-#     s.name = "couch_potato"
+#     s.name = "couch_tomato"
 #     s.summary = %Q{Ruby persistence layer for CouchDB}
 #     s.email = "alex@upstream-berlin.com"
-#     s.homepage = "http://github.com/langalex/couch_potato"
+#     s.homepage = "http://github.com/langalex/couch_tomato"
 #     s.description = "Ruby persistence layer for CouchDB"
 #     s.authors = ["Alexander Lang"]
 #     s.files = FileList["[A-Z]*.*", "{lib,spec,rails}/**/*", "init.rb"]

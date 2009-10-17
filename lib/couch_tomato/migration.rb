@@ -1,4 +1,4 @@
-module CouchPotato
+module CouchTomato
   class Migration
     class << self
       # Execute this migration in the named direction

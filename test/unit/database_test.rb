@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../test_helper'
-require File.dirname(__FILE__) + '/../../lib/couch_potato.rb'
+require File.dirname(__FILE__) + '/../../lib/couch_tomato.rb'
 
 module Foo
   class Bar
@@ -10,7 +10,7 @@ class DatabaseTes < Test::Unit::TestCase
   context "A Database class" do
     setup do
       unload_const('TestDb')
-      ::TestDb = create_const(CouchPotato::Database)
+      ::TestDb = create_const(CouchTomato::Database)
     end
         
     should "have a database name" do

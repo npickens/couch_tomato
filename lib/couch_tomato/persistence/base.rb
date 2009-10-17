@@ -1,4 +1,4 @@
-module CouchPotato
+module CouchTomato
   module Persistence
     module Base
       # initialize a new instance of the model optionally passing it a hash of attributes.
@@ -6,7 +6,7 @@ module CouchPotato
       # 
       # example: 
       #   class Book
-      #     include CouchPotato::Persistence
+      #     include CouchTomato::Persistence
       #     property :title
       #   end
       #   book = Book.new :title => 'Time to Relax'
@@ -22,7 +22,7 @@ module CouchPotato
       #
       # example:
       #   class Book
-      #     include CouchPotato::Persistence
+      #     include CouchTomato::Persistence
       #     property :title
       #     property :year
       #   end
@@ -40,7 +40,7 @@ module CouchPotato
       #
       # example:
       #   class Book
-      #     include CouchPotato::Persistence
+      #     include CouchTomato::Persistence
       #     property :title
       #     property :year
       #   end

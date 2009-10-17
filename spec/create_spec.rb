@@ -7,15 +7,15 @@ describe "create" do
   describe "succeeds" do
     it "should store the class" do
       @comment = Comment.new :title => 'my_title'
-      CouchPotato.database.save_document! @comment
-      CouchPotato.couchrest_database.get(@comment.id)['ruby_class'].should == 'Comment'
+      CouchTomato.database.save_document! @comment
+      CouchTomato.couchrest_database.get(@comment.id)['ruby_class'].should == 'Comment'
     end
   end
   describe "fails" do
     it "should not store anything" do
       @comment = Comment.new
-      CouchPotato.database.save_document @comment
-      CouchPotato.couchrest_database.documents['rows'].should be_empty
+      CouchTomato.database.save_document @comment
+      CouchTomato.couchrest_database.documents['rows'].should be_empty
     end
   end
 end
