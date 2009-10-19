@@ -11,7 +11,7 @@ module CouchTomato
 
         fs_docs = fs_design_docs(database_name)
         db_docs = db_design_docs(db)
-        
+
         fs_docs.each do |design_name, fs_doc|
           db_doc = db_docs[design_name]
 
@@ -107,6 +107,7 @@ module CouchTomato
               end
             end
           end
+
         end
 
       end
@@ -115,7 +116,7 @@ module CouchTomato
     private
 
     def self.path(db_name="")
-      "#{Rails.root}/db/views/#{db_name}" if Rails
+      "#{Rails.root}/couchdb/views/#{db_name}" if Rails
     end
 
     def self.fs_database_names
