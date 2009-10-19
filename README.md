@@ -40,7 +40,7 @@ CouchDB makes it dead-simple to manage multiple databases. For large data-sets, 
 
 ### Each view determines the model for its values
 
-Views return arbitrary hashes. Often a views' value is an entire document (or more correctly, utilize `emit(key, null)` combined with `:include_docs => true`). But, a views' value is also often completely independent of the structure of the underlying documents.
+Views return arbitrary hashes. Often a view's value is an entire document (or more correctly, utilize `emit(key, null)` combined with `:include_docs => true`). But, a view's value is also often completely independent of the structure of the underlying documents.
 
 Define views on the database rather than inside a model (this is arguably more Couch-like). Each views declaration stipulates whether their results should be 'raw' hashes or a particular model type.
 
