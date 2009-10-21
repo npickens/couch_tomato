@@ -17,7 +17,7 @@ begin
     s.homepage = "http://github.com/plastictrophy/couch_tomato"
     s.description = "Ruby persistence layer for CouchDB, inspired by and forked from Couch Potato"
     s.authors = ["Plastic Trophy"]
-    s.files = FileList["[A-Z]*.*", "{lib,rails}/**/*", "init.rb"]
+    s.files = FileList["[A-Z]*.*", "{lib,rails,generators}/**/*", "init.rb"]
     s.add_dependency 'json'
     s.add_dependency 'validatable'
     s.add_dependency 'couchrest', '>=0.24'
@@ -39,19 +39,19 @@ Rake::TestTask.new("test") do |t|
 end
 
 # task :default => :spec
-# 
+#
 # desc "Run all functional specs"
 # Spec::Rake::SpecTask.new(:spec_functional) do |t|
 #   t.spec_opts = ['--options', "\"#{File.dirname(__FILE__)}/spec/spec.opts\""]
 #   t.spec_files = FileList['spec/*_spec.rb']
 # end
-# 
+#
 # desc "Run all unit specs"
 # Spec::Rake::SpecTask.new(:spec_unit) do |t|
 #   t.spec_opts = ['--options', "\"#{File.dirname(__FILE__)}/spec/spec.opts\""]
 #   t.spec_files = FileList['spec/unit/*_spec.rb']
 # end
-# 
+#
 # desc "Run all specs"
 #   task :spec => [:spec_unit, :spec_functional] do
 # end
