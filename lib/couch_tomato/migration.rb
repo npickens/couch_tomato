@@ -15,8 +15,8 @@ module CouchTomato
           docs.each do |doc|
             next if /^_design/ =~ doc['id']
             send(direction, doc['doc'])
-            db.save_doc(doc['doc'])
           end
+          db.bulk_save(docs)
         end
 
         case direction
