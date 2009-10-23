@@ -11,10 +11,12 @@ module CouchTomato
         end
 
         time = Benchmark.measure do
-          docs = db.get('_all_docs', :include_docs => true)['rows']
-          docs.each do |doc|
-            next if /^_design/ =~ doc['id']
-            send(direction, doc['doc'])
+          rows = db.get('_all_docs', :include_docs => true)['rows']
+          docs = []
+          rows.each do |row|
+            next if row['id'] =~ /^_design/
+            send(direction, row['doc'])
+            docs << row['doc']
           end
           db.bulk_save(docs)
         end
