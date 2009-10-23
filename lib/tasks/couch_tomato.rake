@@ -103,7 +103,7 @@ namespace :couch_tomato do
       dst_env = ENV['DST_ENV'] || 'development'
 
       replicator = CouchTomato::Replicator.new(src_server, dst_server)
-      replicator.replicate_env(src_env, dst_env, ENV['PREFIX'])
+      replicator.replicate_env!(src_env, dst_env, ENV['PREFIX'])
     end
   end
 
