@@ -5,6 +5,7 @@ module CouchTomato
       def migrate(direction, db)
         return unless respond_to?(direction)
 
+        write db.name
         case direction
           when :up   then announce "migrating"
           when :down then announce "reverting"

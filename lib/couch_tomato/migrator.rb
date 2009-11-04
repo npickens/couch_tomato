@@ -104,7 +104,7 @@ module CouchTomato
       def move(direction, db, migrations_path, steps)
         migrator = self.new(direction, db, migrations_path)
         start_index = migrator.migrations.index(migrator.current_migration) || 0
-        
+
         finish = migrator.migrations[start_index + steps]
         version = finish ? finish.version : 0
         send(direction, db, migrations_path, version)
@@ -150,7 +150,7 @@ module CouchTomato
       runnable.pop if down? && !target.nil?
 
       runnable.each do |migration|
-        puts "Migrating to #{migration.name} (#{migration.version})"
+        RAILS_DEFAULT_LOGGER.info("Migrating to #{migration.name} (#{migration.version})")
 
         # On our way up, we skip migrating the ones we've already migrated
         next if up? && migrated.include?(migration.version.to_i)
