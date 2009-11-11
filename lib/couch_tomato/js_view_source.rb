@@ -44,7 +44,7 @@ module CouchTomato
         end
       end
 
-      return false
+      return fs_doc['views'].length != db_doc['views'].length
     end
 
     def self.diff
