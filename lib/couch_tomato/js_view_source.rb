@@ -49,21 +49,28 @@ module CouchTomato
 
     def self.diff
       fs_database_names.each do |database_name|
+        # Do we really want to force create a DB?
         db = database!(database_name)
-
         fs_docs = fs_design_docs(database_name)
         db_docs = db_design_docs(db)
+
+        create, add, del, mod = %w(+ + - <)
+        tab = "  "
+        diff = {}
 
         # design docs on fs but not in db
         (fs_docs.keys - db_docs.keys).each do |design_name|
           unless fs_docs[design_name]['views'].empty?
-            puts "    NEW: #{database_name}/_#{design_name}: #{fs_docs[design_name]['views'].keys.join(', ')}"
+            #puts "    NEW: #{database_name}/_#{design_name}: #{fs_docs[design_name]['views'].keys.join(', ')}"
+            diff[design_name] ||= [[], create]
+            fs_docs[design_name]['views'].keys.each {|view| diff[design_name].first.push([view, add]) }
           end
         end
 
         # design docs in db but not on fs
         (db_docs.keys - fs_docs.keys).each do |design_name|
-          puts "REMOVED: #{database_name}/_#{design_name}"
+          #puts "REMOVED: #{database_name}/_#{design_name}"
+          diff[design_name] ||= [nil, del]
         end
 
         # design docs in both db and fs
@@ -76,14 +83,18 @@ module CouchTomato
             methods = fs_only_view_keys.map do |key|
               %w(map reduce).map {|method| fs_docs[design_name]['views'][key][method].nil? ? nil : "#{key}.#{method}()"}.compact
             end.flatten
-            puts "  ADDED: #{database_name}/_#{design_name}: #{methods.join(', ')}"
+            #puts "  ADDED: #{database_name}/_#{design_name}: #{methods.join(', ')}"
+            diff[design_name] ||= [[], nil]
+            methods.each {|method| diff[design_name].first.push([method, add]) }
           end
 
           unless db_only_view_keys.empty?
             methods = db_only_view_keys.map do |key|
               %w(map reduce).map {|method| db_docs[design_name]['views'][key][method] ? "#{key}.#{method}()" : nil}.compact
             end
-            puts "REMOVED: #{database_name}/_#{design_name}: #{methods.join(', ')}"
+            #puts "REMOVED: #{database_name}/_#{design_name}: #{methods.join(', ')}"
+            diff[design_name] ||= [[], nil]
+            methods.each {|method| diff[design_name].first.push([method, del])}
           end
 
           common_view_keys.each do |common_key|
@@ -93,23 +104,40 @@ module CouchTomato
             db_view = db_docs[design_name]['views'][common_key]
 
             # has either the map or reduce been added or removed
+            diff[design_name] ||= [[], nil]
             %w(map reduce).each do |method|
               if db_view[method] && !fs_view[method]
-                puts "REMOVED: #{database_name}/_#{design_name}:#{method}()" and next
+                #puts "REMOVED: #{database_name}/_#{design_name}: #{common_key}.#{method}()" 
+                diff[design_name].first.push([method, del]) and next
               end
 
               if fs_view[method] && !db_view[method]
-                puts "  ADDED: #{database_name}/_#{design_name}:#{method}()" and next
+                #puts "  ADDED: #{database_name}/_#{design_name}: #{common_key}.#{method}()" 
+                diff[design_name].first.push([method, add]) and next
               end
 
               if fs_view["sha1-#{method}"] != db_view["sha1-#{method}"]
-                puts "OUTDATED: #{database_name}/_#{design_name}:#{method}()" and next
+                #puts "OUTDATED: #{database_name}/_#{design_name}: #{common_key}.#{method}()" 
+                diff[design_name].first.push([method, mod]) and next
               end
             end
           end
 
         end
-
+        
+        print_db = true
+        diff.each do |design_doc, status|
+          next if status.first.empty?
+          puts "#{database_name}/" if print_db
+          print_db = false
+          
+          puts "#{tab}#{status.last} _design/#{design_doc}:"
+          unless status.first.nil?
+            status.first.each do |method|
+              puts "#{tab * 2}#{method.last} #{method.first}"
+            end
+          end
+        end
       end
     end
 
@@ -174,10 +202,14 @@ module CouchTomato
     end
 
     # todo: don't depend on "proprietary" APP_CONFIG
-    def self.database!(database_name)
-      CouchRest.database!("http://" + APP_CONFIG["couchdb_address"] + ":" + APP_CONFIG["couchdb_port"].to_s \
-       + "/" + APP_CONFIG["couchdb_basename"] + "_" + database_name + "_" + RAILS_ENV)
+    def self.database(database_name, force=false)
+      url = "http://" + APP_CONFIG["couchdb_address"] + ":" + APP_CONFIG["couchdb_port"].to_s \
+       + "/" + APP_CONFIG["couchdb_basename"] + "_" + database_name + "_" + RAILS_ENV
+      force ? CouchRest.database!(url) : CouchRest.database(url)
     end
-
+    
+    def self.database!(database_name)
+      database(database_name, true);
+    end
   end
 end

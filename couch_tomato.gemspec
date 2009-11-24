@@ -49,6 +49,7 @@ Gem::Specification.new do |s|
      "lib/couch_tomato/persistence/validation.rb",
      "lib/couch_tomato/replicator.rb",
      "lib/tasks/couch_tomato.rake",
+     "lib/tasks/couch_tomato.thor",
      "rails/init.rb"
   ]
   s.homepage = %q{http://github.com/plastictrophy/couch_tomato}
