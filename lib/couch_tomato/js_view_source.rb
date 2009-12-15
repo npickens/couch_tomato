@@ -108,17 +108,17 @@ module CouchTomato
             %w(map reduce).each do |method|
               if db_view[method] && !fs_view[method]
                 #puts "REMOVED: #{database_name}/_#{design_name}: #{common_key}.#{method}()" 
-                diff[design_name].first.push([method, del]) and next
+                diff[design_name].first.push(["#{common_key}-#{method}", del]) and next
               end
 
               if fs_view[method] && !db_view[method]
                 #puts "  ADDED: #{database_name}/_#{design_name}: #{common_key}.#{method}()" 
-                diff[design_name].first.push([method, add]) and next
+                diff[design_name].first.push(["#{common_key}-#{method}", add]) and next
               end
 
               if fs_view["sha1-#{method}"] != db_view["sha1-#{method}"]
                 #puts "OUTDATED: #{database_name}/_#{design_name}: #{common_key}.#{method}()" 
-                diff[design_name].first.push([method, mod]) and next
+                diff[design_name].first.push(["#{common_key}-#{method}", mod]) and next
               end
             end
           end
@@ -127,7 +127,7 @@ module CouchTomato
         
         print_db = true
         diff.each do |design_doc, status|
-          next if status.first.empty?
+          next if status.first.nil? || status.first.empty?
           puts "#{database_name}/" if print_db
           print_db = false
           
@@ -200,11 +200,43 @@ module CouchTomato
       design_doc['views'][name]["sha1-#{type}"] = sha1
       design_doc
     end
+    
+    def self.touch(dbs, async=false, timeout=nil)
+      s = Patron::Session.new
+      s.timeout = timeout.nil? ? 86400 : timeout.to_i
+      s.timeout = 1 if async
+       
+      dbs.each do |db_str|
+        db = database(db_str)
+        design_doc = db_design_docs(db)
+        
+        doc_id = design_doc[db_str.to_sym]["_id"]
+        view = design_doc[db_str.to_sym]["views"].keys.first
+
+        print "Updating #{db_str}... "
+        STDOUT.flush
+        
+        begin
+          s.get("#{db_url(db_str)}/#{doc_id}/_view/#{view}?limit=0")
+          puts "finished!"
+        rescue Patron::TimeoutError
+          if async
+            puts "task started asynchronously."
+          else
+            puts "the view could not be built within the specified timeout (#{s.timeout} seconds). The view is still being built in the background."
+          end
+        end
+      end
+    end
+    
+    def self.db_url(database_name)
+      "http://" + APP_CONFIG["couchdb_address"] + ":" + APP_CONFIG["couchdb_port"].to_s \
+       + "/" + APP_CONFIG["couchdb_basename"] + "_" + database_name + "_" + RAILS_ENV
+    end
 
     # todo: don't depend on "proprietary" APP_CONFIG
     def self.database(database_name, force=false)
-      url = "http://" + APP_CONFIG["couchdb_address"] + ":" + APP_CONFIG["couchdb_port"].to_s \
-       + "/" + APP_CONFIG["couchdb_basename"] + "_" + database_name + "_" + RAILS_ENV
+      url = db_url(database_name)
       force ? CouchRest.database!(url) : CouchRest.database(url)
     end
     

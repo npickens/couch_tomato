@@ -1,7 +1,16 @@
 require 'pp'
+require 'patron'
 
 class Couch_Tomato < Thor
     include Thor::Actions
+  desc 'init', 'Sets up the required structure for Couch Tomato'
+  def init
+    puts "Creating the couchdb folder structure if it doesn't already exist."
+    puts "#{FileUtils.mkdir_p "couchdb"}/"
+    puts "#{FileUtils.mkdir_p "couchdb/migrate"}/"
+    puts "#{FileUtils.mkdir_p "couchdb/views"}/"
+  end
+  
   desc 'push', 'Inserts the views into CouchDB'
   method_options %w(RAILS_ENV -e) => :string
   def push
@@ -17,14 +26,18 @@ class Couch_Tomato < Thor
   end
   
   desc 'drop', 'Drops databases for the current RAILS_ENV; ' + 
-       'If no databases are specified, user will be prompted if all databases should be removed'
-  method_options %w(RAILS_ENV -e) => :string
-  def drop(*dbs)
+       'If no databases are specified, user will be prompted if all databases should be removed; ' + 
+       'If the -r option is specified, all databases matching the regex will be dropped.'
+    method_options %w(RAILS_ENV -e) => :string, %w(DBS -d) => :array, %w(REGEX -r) => :string
+  def drop
     load_rails(options)
-    dbs = nil if (dbs.empty?) && (yes? "Drop all databases?")
-
+    dbs = options["DBS"]
+    rm_all = false
+    rm_all = (yes? "Drop all databases?") if (options['REGEX'].nil? && dbs.nil?)
+    
+    regex = Regexp.new(options['REGEX'].to_s)
     databases(dbs) do |db, dir|
-      if is_db?(db)
+      if (rm_all || db.name == db.name[regex]) && is_db?(db)
         db.delete!
         puts "Dropped #{db.name}"
       end
@@ -80,17 +93,17 @@ class Couch_Tomato < Thor
   end
   
   desc 'replicate', 'Replicate databases between app environments'
-  method_options %w(RAILS_ENV -e) => :string, %w(SRC_DB sd) => :string, 
-    %w(DST_DB dd) => :string , %w(SRC_SERVER ss) => :string , %w(DST_SERVER ds) => :string 
+  method_options %w(RAILS_ENV -e) => :string, %w(SRC_DB -c) => :string, 
+    %w(DST_DB -v) => :string , %w(SRC_SERVER -s) => :string , %w(DST_SERVER -t) => :string 
   def replicate
     load_rails(options)
     src_server, dst_server = servers
 
-    src_db = ENV['DB']
-    dst_db = ENV['DST_DB'] || (src_server == dst_server ? "#{src_db}_bak" : src_db)
+    src_db = options['SRC_DB']
+    dst_db = options['DST_DB'] || (src_server == dst_server ? "#{src_db}_bak" : src_db)
 
     replicator = CouchTomato::Replicator.new(src_server, dst_server)
-
+    
     if src_db
       puts "== Replicating '#{src_server}/#{src_db}' to '#{dst_server}/#{dst_db}'"
       replicator.replicate(src_db, dst_db)
@@ -101,6 +114,15 @@ class Couch_Tomato < Thor
       puts "== Replicating all databases from '#{src_server}' to '#{dst_server}'"
       replicator.replicate_all
     end
+  end
+  
+  desc 'touch', 'Initiates the building of a design document'
+  method_options %w(RAILS_ENV -e) => :string, %w(DBS -d) => :array, :async => :boolean, %w(TIMEOUT -t) => :numeric
+  def touch
+    load_rails(options)
+    view_path = "couchdb/views"
+    valid_dbs = options["DBS"] & (Dir["couchdb/views/**"].map {|db| File.basename(db) })
+    CouchTomato::JsViewSource.touch(valid_dbs, options.async?, options['TIMEOUT'])
   end
   
   private
@@ -151,10 +173,8 @@ class Couch_Tomato < Thor
   end
 
   def databases(db_names=nil)
-    #-Do we really need this single db case any more? The function can handle a-----#
-    # database sent in as a parameter. Please address ASAP.                         #
-    dirs = ENV['DB'] ? ["couchdb/migrate/#{ENV['DB']}"] : Dir['couchdb/migrate/*']  #
-    #-------------------------------------------------------------------------------#
+    dirs = Dir['couchdb/migrate/*']
+    
     db_map = dirs.inject({}) {|map, dir| map[File.basename(dir)] = dir; map }
     db_names ||= db_map.keys
     db_names.each do |db_name|
