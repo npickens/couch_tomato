@@ -1,4 +1,3 @@
-require 'pp'
 require 'patron'
 
 class Couch_Tomato < Thor

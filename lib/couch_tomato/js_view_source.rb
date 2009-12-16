@@ -48,29 +48,36 @@ module CouchTomato
     end
 
     def self.diff
+      status_dict = {
+        :NEW_DOC  => "new design:", :NEW_VIEW => "new view:", 
+        :MOD_VIEW => "modified:",   :DEL_DOC  => "deleted:", 
+        :DEL_VIEW => "deleted:",    :NEW_DB => "new db:"
+      }
+      types = ["map", "reduce"]
+      puts "# Changes with respect to the filesystem:"
+      
       fs_database_names.each do |database_name|
-        # Do we really want to force create a DB?
-        db = database!(database_name)
+        db = database(database_name)
+        puts "#\t#{setw(status_dict[:NEW_DB], 14)}#{database_name}" unless is_db?(db)
+        
         fs_docs = fs_design_docs(database_name)
-        db_docs = db_design_docs(db)
+        db_docs = is_db?(db) ? db_design_docs(db) : {}
 
-        create, add, del, mod = %w(+ + - <)
-        tab = "  "
-        diff = {}
-
+        diff = []
         # design docs on fs but not in db
         (fs_docs.keys - db_docs.keys).each do |design_name|
           unless fs_docs[design_name]['views'].empty?
-            #puts "    NEW: #{database_name}/_#{design_name}: #{fs_docs[design_name]['views'].keys.join(', ')}"
-            diff[design_name] ||= [[], create]
-            fs_docs[design_name]['views'].keys.each {|view| diff[design_name].first.push([view, add]) }
+            diff.push [:NEW_DOC, "#{database_name}/_#{design_name}"]
+            fs_docs[design_name]['views'].keys.each do |view| 
+              (fs_docs[design_name]['views'][view].keys & types).each {|type|
+                diff.push [:NEW_VIEW, "#{database_name}/_#{design_name}/#{view}-#{type}"]}
+            end
           end
         end
 
         # design docs in db but not on fs
         (db_docs.keys - fs_docs.keys).each do |design_name|
-          #puts "REMOVED: #{database_name}/_#{design_name}"
-          diff[design_name] ||= [nil, del]
+          diff.push [:DEL_DOC, "#{database_name}/_#{design_name}"] unless (design_name.to_s.include? "migrations")
         end
 
         # design docs in both db and fs
@@ -81,20 +88,16 @@ module CouchTomato
 
           unless fs_only_view_keys.empty?
             methods = fs_only_view_keys.map do |key|
-              %w(map reduce).map {|method| fs_docs[design_name]['views'][key][method].nil? ? nil : "#{key}.#{method}()"}.compact
+              %w(map reduce).map {|method| fs_docs[design_name]['views'][key][method].nil? ? nil : "#{key}-#{method}"}.compact
             end.flatten
-            #puts "  ADDED: #{database_name}/_#{design_name}: #{methods.join(', ')}"
-            diff[design_name] ||= [[], nil]
-            methods.each {|method| diff[design_name].first.push([method, add]) }
+            methods.each {|method| diff.push [:NEW_VIEW, "#{database_name}/_#{design_name}/#{method}"] }
           end
 
           unless db_only_view_keys.empty?
             methods = db_only_view_keys.map do |key|
-              %w(map reduce).map {|method| db_docs[design_name]['views'][key][method] ? "#{key}.#{method}()" : nil}.compact
+              %w(map reduce).map {|method| db_docs[design_name]['views'][key][method] ? "#{key}-#{method}" : nil}.compact
             end
-            #puts "REMOVED: #{database_name}/_#{design_name}: #{methods.join(', ')}"
-            diff[design_name] ||= [[], nil]
-            methods.each {|method| diff[design_name].first.push([method, del])}
+            methods.each {|method| diff.push [:DEL_VIEW, "#{database_name}/_#{design_name}/#{method}"] }
           end
 
           common_view_keys.each do |common_key|
@@ -104,44 +107,35 @@ module CouchTomato
             db_view = db_docs[design_name]['views'][common_key]
 
             # has either the map or reduce been added or removed
-            diff[design_name] ||= [[], nil]
             %w(map reduce).each do |method|
               if db_view[method] && !fs_view[method]
-                #puts "REMOVED: #{database_name}/_#{design_name}: #{common_key}.#{method}()" 
-                diff[design_name].first.push(["#{common_key}-#{method}", del]) and next
+                diff.push [:DEL_VIEW, "#{database_name}/_#{design_name}/#{common_key}-#{method}"]  and next
               end
 
               if fs_view[method] && !db_view[method]
-                #puts "  ADDED: #{database_name}/_#{design_name}: #{common_key}.#{method}()" 
-                diff[design_name].first.push(["#{common_key}-#{method}", add]) and next
+                diff.push [:NEW_VIEW, "#{database_name}/_#{design_name}/#{common_key}-#{method}"]  and next
               end
 
               if fs_view["sha1-#{method}"] != db_view["sha1-#{method}"]
-                #puts "OUTDATED: #{database_name}/_#{design_name}: #{common_key}.#{method}()" 
-                diff[design_name].first.push(["#{common_key}-#{method}", mod]) and next
+                diff.push [:MOD_VIEW, "#{database_name}/_#{design_name}/#{common_key}-#{method}"]  and next
               end
             end
           end
-
         end
         
-        print_db = true
-        diff.each do |design_doc, status|
-          next if status.first.nil? || status.first.empty?
-          puts "#{database_name}/" if print_db
-          print_db = false
-          
-          puts "#{tab}#{status.last} _design/#{design_doc}:"
-          unless status.first.nil?
-            status.first.each do |method|
-              puts "#{tab * 2}#{method.last} #{method.first}"
-            end
-          end
+        diff.uniq!
+        diff.each do |status|
+          puts "#\t#{setw(status_dict[status.first], 14)}#{status.last}"
         end
       end
     end
 
     private
+    
+    def self.setw(str, w)
+      spaces = w - str.length
+      (spaces > 0) ? str + (" " * spaces) : str
+    end
 
     def self.path(db_name="")
       "#{Rails.root}/couchdb/views/#{db_name}" if Rails
@@ -242,6 +236,15 @@ module CouchTomato
     
     def self.database!(database_name)
       database(database_name, true);
+    end
+    
+    def self.is_db?(db) 
+      begin
+        db.info
+      rescue
+        return false
+      end
+      return true
     end
   end
 end
