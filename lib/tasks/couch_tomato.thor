@@ -1,13 +1,45 @@
 require 'patron'
 
-class Couch_Tomato < Thor
-    include Thor::Actions
+Ct_Yml_Example = %(defaults: &defaults
+  couchdb_address:         127.0.0.1
+  couchdb_port:            5984
+  couchdb_basename:        your_project_name
+
+development:
+  <<: *defaults
+
+test:
+  <<: *defaults
+
+production:
+  <<: *defaults
+)
+
+STDOUT.sync = true
+class CouchTomatoApp < Thor
+  include Thor::Actions
+  namespace :ct
+  
   desc 'init', 'Sets up the required structure for Couch Tomato'
   def init
-    puts "Creating the couchdb folder structure if it doesn't already exist."
-    puts "#{FileUtils.mkdir_p "couchdb"}/"
-    puts "#{FileUtils.mkdir_p "couchdb/migrate"}/"
-    puts "#{FileUtils.mkdir_p "couchdb/views"}/"
+    load_rails
+    ct_yml_path = "#{::Rails.root}/config/couch_tomato.yml.example"
+    couch_folder = "#{::Rails.root}/couchdb"
+    
+    print "Generating a sample couch_tomato yml... " 
+    unless File.exist?(ct_yml_path)
+      File.open(ct_yml_path, 'w') {|f| f.write(Ct_Yml_Example) }
+      puts "#{ct_yml_path} created"
+    else
+      puts "#{ct_yml_path} already exists"
+    end
+
+    print "Generating the couchdb folder.......... " 
+    puts (File.directory? couch_folder) ? "#{couch_folder} already exists" : "#{FileUtils.mkdir "#{couch_folder}"} created"
+    print "Generating couchdb/migrate............. " 
+    puts (File.directory? "#{couch_folder}/migrate") ? "#{couch_folder}/migrate already exists" : "#{FileUtils.mkdir "#{couch_folder}/migrate"} created"
+    print "Generating couchdb/views............... " 
+    puts (File.directory? "#{couch_folder}/views") ? "#{couch_folder}/views already exists" : "#{FileUtils.mkdir "#{couch_folder}/views"} created"
   end
   
   desc 'push', 'Inserts the views into CouchDB'
@@ -46,16 +78,17 @@ class Couch_Tomato < Thor
   desc 'migrate', 'Runs migrations'
   method_options %w(RAILS_ENV -e) => :string, %w(VERSION -v) => :string, %w(STEP -s) => :string, 
     :redo => :boolean, :reset => :boolean, :up => :boolean, :down => :boolean
-  def migrate
+  def migrate #TEST
     load_rails(options)
     supported_args = %w(redo reset up down)
     action = supported_args & options.keys
-    raise "Cannot provide more than one action." if action.length != 1
+    raise "Cannot provide more than one action." if action.length > 1
+    
     action = (action.empty?) ? nil : action.first
-
     case action
       when nil
         migrate_helper
+      #Rollbacks the database one migration and re migrate up. If you want to rollback more than one step, define STEP=x. Target specific version with VERSION=x.
       when "redo"
         if ENV['VERSION']
           down_helper
@@ -64,12 +97,15 @@ class Couch_Tomato < Thor
           rollback_helper
           migrate_helper
         end
+      #Resets your database using your migrations for the current environment
       when "reset"
         invoke :drop
         invoke :push
         migrate_helper
+      #Runs the "up" for a given migration VERSION.
       when "up"
         up_helper
+      #Runs the "down" for a given migration VERSION.
       when "down"
         down_helper
     end        
@@ -77,14 +113,14 @@ class Couch_Tomato < Thor
     
   desc 'rollback', 'Rolls back to the previous version. Specify the number of steps with STEP=n'
   method_options %w(RAILS_ENV -e) => :string, %w(STEP -s) => :string 
-  def rollback
+  def rollback #TEST
     load_rails(options)
     rollback_helper
   end
   
   desc 'forward', 'Rolls forward to the next version. Specify the number of steps with STEP=n'
   method_options %w(RAILS_ENV -e) => :string, %w(STEP -s) => :string 
-  def forward
+  def forward #TEST
     load_rails(options)
     databases do |db, dir|
       CouchTomato::Migrator.forward(db, dir, ENV['STEP'] ? ENV['STEP'].to_i : 1)
@@ -156,15 +192,19 @@ class Couch_Tomato < Thor
   end
   
   def load_rails(options=nil)
-    %w(RAILS_ENV VERSION SRC_SERVER DST_SERVER STEP).each {|var| ENV[var] =
-      options[var] unless options[var].nil? } unless options.nil?
+    unless (Rails rescue nil)
+      print "Loading Rails... "  
+      %w(RAILS_ENV VERSION SRC_SERVER DST_SERVER STEP).each {|var| ENV[var] =
+        options[var] unless options[var].nil? } unless options.nil?
 
-    require(File.join(ENV['PWD'], 'config', 'boot'))
-    require(File.join(ENV['PWD'], 'config', 'environment'))
+      require(File.join(ENV['PWD'], 'config', 'boot'))
+      require(File.join(ENV['PWD'], 'config', 'environment'))
+      puts "done"
+    end
   end
 
   def servers
-    local_server = "http://#{APP_CONFIG['couchdb_address']}:#{APP_CONFIG['couchdb_port']}"
+    local_server = "http://#{CouchConfig.couch_address}:#{CouchConfig.couch_port}"
     src_server = (ENV['SRC_SERVER'] || local_server).gsub(/\s*\/\s*$/, '')
     dst_server = (ENV['DST_SERVER'] || local_server).gsub(/\s*\/\s*$/, '')
 

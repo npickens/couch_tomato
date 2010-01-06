@@ -1,5 +1,6 @@
 require 'digest/sha1'
 
+STDOUT.sync = true
 module CouchTomato
   class JsViewSource
     # todo: provide a 'dirty?' method that can be called in an initializer and warn the developer that view are out of sync
@@ -22,11 +23,11 @@ module CouchTomato
 
           if fs_doc['views'].empty?
             next unless fs_doc['_rev']
-            puts "DELETE #{fs_doc['_id']}" unless silent
+            puts "DELETE #{database_name}/#{fs_doc['_id']}" unless silent
             db.delete_doc(fs_doc)
           else
             if changed_views?(fs_doc, db_doc)
-              puts "UPDATE #{fs_doc['_id']}" unless silent
+              puts "UPDATE #{database_name}/#{fs_doc['_id']}" unless silent
               db.save_doc(fs_doc)
             end
           end
@@ -160,12 +161,15 @@ module CouchTomato
       design_docs = {}
 
       path = "#{RAILS_ROOT}/couchdb/views/#{db_name}"
-      Dir[path + "/**"].each do |file|
-        throw "Invalid filename '#{File.basename(file)}': expecting '-map.js' or '-reduce.js' suffix" unless file.match(/-((map)|(reduce))\.js$/)
+      doc_folders = Dir["#{path}/**/"].map {|ddoc| ddoc.chop! }
+      doc_folders.each do |design_doc|
+        (Dir["#{design_doc}/**"] - doc_folders).each do |file|
+          throw "Invalid filename '#{File.basename(file)}': expecting '-map.js' or '-reduce.js' suffix" unless file.match(/-((map)|(reduce))\.js$/)
 
-        design_name = db_name.to_sym
-        design_docs[design_name] ||= {'_id' => "_design/#{db_name}", 'views' => {}}
-        fs_view(design_docs[design_name], file)
+          design_name = File.basename(design_doc)
+          design_docs[design_name.to_sym] ||= {'_id' => "_design/#{design_name}", 'views' => {}}
+          fs_view(design_docs[design_name.to_sym], file)
+        end
       end
 
       design_docs.each do |db, design|
@@ -202,34 +206,35 @@ module CouchTomato
        
       dbs.each do |db_str|
         db = database(db_str)
-        design_doc = db_design_docs(db)
+        design_docs = db_design_docs(db)
         
-        doc_id = design_doc[db_str.to_sym]["_id"]
-        view = design_doc[db_str.to_sym]["views"].keys.first
-
-        print "Updating #{db_str}... "
-        STDOUT.flush
-        
-        begin
-          s.get("#{db_url(db_str)}/#{doc_id}/_view/#{view}?limit=0")
-          puts "finished!"
-        rescue Patron::TimeoutError
-          if async
-            puts "task started asynchronously."
-          else
-            puts "the view could not be built within the specified timeout (#{s.timeout} seconds). The view is still being built in the background."
-          end
+        design_docs.each do |ddoc_sym, ddoc|
+          next if ddoc_sym.to_s == "migrations"
+          doc_id = ddoc["_id"]
+          view = ddoc["views"].keys.first
+          
+          print "Building #{db_str}/#{doc_id}... "
+          begin
+            s.get("#{db_url(db_str)}/#{doc_id}/_view/#{view}?limit=0")
+            puts "finished!"
+          rescue Patron::TimeoutError
+            if async
+              puts "task started asynchronously."
+            else
+              puts "the view could not be built within the specified timeout (#{s.timeout} seconds). The view is still being built in the background."
+            end
+          end          
         end
       end
     end
     
     def self.db_url(database_name)
-      "http://" + APP_CONFIG["couchdb_address"] + ":" + APP_CONFIG["couchdb_port"].to_s \
-       + "/" + APP_CONFIG["couchdb_basename"] + "_" + database_name + "_" + RAILS_ENV
+      "http://" + CouchConfig.couch_address + ":" + CouchConfig.couch_port.to_s \
+       + "/" + CouchConfig.couch_basename + "_" + database_name + "_" + RAILS_ENV
     end
 
-    # todo: don't depend on "proprietary" APP_CONFIG
     def self.database(database_name, force=false)
+      raise "Database names (#{database_name}) cannot contain uppercase letters." unless database_name == database_name.downcase
       url = db_url(database_name)
       force ? CouchRest.database!(url) : CouchRest.database(url)
     end

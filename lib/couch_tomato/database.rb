@@ -1,5 +1,4 @@
 require 'couchrest'
-require 'pp'
 
 module CouchTomato
   class Database
@@ -14,8 +13,13 @@ module CouchTomato
     class_inheritable_accessor :views
 
     self.views = {}
-    self.prefix_string = ''
-
+    
+    def self.inherited(c)
+      c.database_name   = c.to_s.underscore
+      c.prefix_string   = CouchConfig.couch_basename
+      c.database_server = CouchConfig.couch_address
+    end
+    
     def self.database
       return self.couchrest_db if self.couchrest_db
       
@@ -40,8 +44,12 @@ module CouchTomato
     end
     def self.name (name)
       raise 'You need to provide a database name' if name.nil?
-      self.database_name   = (name.class == Symbol)? name.to_s : name
+      self.database_name = (name.class == Symbol)? name.to_s : name
     end
+    
+    # def self.database_name
+    #   @@database_name ||= self.to_s.underscore
+    # end
 
     # TODO: specify db=>host mapping in yaml, and allow to differ per environment
     def self.server (route='http://127.0.0.1:5984/')

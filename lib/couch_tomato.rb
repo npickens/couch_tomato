@@ -2,6 +2,7 @@ require 'couchrest'
 require 'json'
 require 'json/add/core'
 require 'json/add/rails'
+require 'active_support'
 
 # require 'ostruct'
 
