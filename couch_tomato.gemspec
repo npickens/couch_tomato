@@ -33,6 +33,7 @@ Gem::Specification.new do |s|
      "lib/core_ext/symbol.rb",
      "lib/core_ext/time.rb",
      "lib/couch_tomato.rb",
+     "lib/couch_tomato/config.rb",
      "lib/couch_tomato/database.rb",
      "lib/couch_tomato/js_view_source.rb",
      "lib/couch_tomato/migration.rb",

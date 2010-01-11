@@ -16,8 +16,8 @@ module CouchTomato
     
     def self.inherited(c)
       c.database_name   = c.to_s.underscore
-      c.prefix_string   = CouchConfig.couch_basename
-      c.database_server = CouchConfig.couch_address
+      c.prefix_string   = CouchTomato::Config.couch_basename
+      c.database_server = CouchTomato::Config.couch_address
     end
     
     def self.database

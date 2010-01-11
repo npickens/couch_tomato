@@ -22,12 +22,15 @@ class CouchTomatoApp < Thor
   
   desc 'init', 'Sets up the required structure for Couch Tomato'
   def init
-    load_rails
-    ct_yml_path = "#{::Rails.root}/config/couch_tomato.yml.example"
-    couch_folder = "#{::Rails.root}/couchdb"
+    load_env
+    project_root = ::Rails.root rescue nil || "."
+    
+    ct_yml_path = "#{project_root}/config/couch_tomato.yml.example"
+    couch_folder = "#{project_root}/couchdb"
     
     print "Generating a sample couch_tomato yml... " 
     unless File.exist?(ct_yml_path)
+      FileUtils.mkdir "#{project_root}/config"
       File.open(ct_yml_path, 'w') {|f| f.write(Ct_Yml_Example) }
       puts "#{ct_yml_path} created"
     else
@@ -45,14 +48,14 @@ class CouchTomatoApp < Thor
   desc 'push', 'Inserts the views into CouchDB'
   method_options %w(RAILS_ENV -e) => :string
   def push
-    load_rails(options)
+    load_env(options)
     CouchTomato::JsViewSource.push
   end
   
   desc 'diff', 'Compares views in DB and the File System'
   method_options %w(RAILS_ENV -e) => :string
   def diff
-    load_rails(options)
+    load_env(options)
     CouchTomato::JsViewSource.diff
   end
   
@@ -61,7 +64,7 @@ class CouchTomatoApp < Thor
        'If the -r option is specified, all databases matching the regex will be dropped.'
     method_options %w(RAILS_ENV -e) => :string, %w(DBS -d) => :array, %w(REGEX -r) => :string
   def drop
-    load_rails(options)
+    load_env(options)
     dbs = options["DBS"]
     rm_all = false
     rm_all = (yes? "Drop all databases?") if (options['REGEX'].nil? && dbs.nil?)
@@ -79,7 +82,7 @@ class CouchTomatoApp < Thor
   method_options %w(RAILS_ENV -e) => :string, %w(VERSION -v) => :string, %w(STEP -s) => :string, 
     :redo => :boolean, :reset => :boolean, :up => :boolean, :down => :boolean
   def migrate #TEST
-    load_rails(options)
+    load_env(options)
     supported_args = %w(redo reset up down)
     action = supported_args & options.keys
     raise "Cannot provide more than one action." if action.length > 1
@@ -114,14 +117,14 @@ class CouchTomatoApp < Thor
   desc 'rollback', 'Rolls back to the previous version. Specify the number of steps with STEP=n'
   method_options %w(RAILS_ENV -e) => :string, %w(STEP -s) => :string 
   def rollback #TEST
-    load_rails(options)
+    load_env(options)
     rollback_helper
   end
   
   desc 'forward', 'Rolls forward to the next version. Specify the number of steps with STEP=n'
   method_options %w(RAILS_ENV -e) => :string, %w(STEP -s) => :string 
   def forward #TEST
-    load_rails(options)
+    load_env(options)
     databases do |db, dir|
       CouchTomato::Migrator.forward(db, dir, ENV['STEP'] ? ENV['STEP'].to_i : 1)
     end
@@ -131,7 +134,7 @@ class CouchTomatoApp < Thor
   method_options %w(RAILS_ENV -e) => :string, %w(SRC_DB -c) => :string, 
     %w(DST_DB -v) => :string , %w(SRC_SERVER -s) => :string , %w(DST_SERVER -t) => :string 
   def replicate
-    load_rails(options)
+    load_env(options)
     src_server, dst_server = servers
 
     src_db = options['SRC_DB']
@@ -154,7 +157,7 @@ class CouchTomatoApp < Thor
   desc 'touch', 'Initiates the building of a design document'
   method_options %w(RAILS_ENV -e) => :string, %w(DBS -d) => :array, :async => :boolean, %w(TIMEOUT -t) => :numeric
   def touch
-    load_rails(options)
+    load_env(options)
     view_path = "couchdb/views"
     valid_dbs = options["DBS"] & (Dir["couchdb/views/**"].map {|db| File.basename(db) })
     CouchTomato::JsViewSource.touch(valid_dbs, options.async?, options['TIMEOUT'])
@@ -191,20 +194,26 @@ class CouchTomatoApp < Thor
     end
   end
   
-  def load_rails(options=nil)
+  def load_env(options=nil)
     unless (Rails rescue nil)
-      print "Loading Rails... "  
+      print "Loading enviornment... "  
       %w(RAILS_ENV VERSION SRC_SERVER DST_SERVER STEP).each {|var| ENV[var] =
         options[var] unless options[var].nil? } unless options.nil?
 
-      require(File.join(ENV['PWD'], 'config', 'boot'))
-      require(File.join(ENV['PWD'], 'config', 'environment'))
-      puts "done"
+      begin
+        require(File.join(ENV['PWD'], 'config', 'boot'))
+        require(File.join(ENV['PWD'], 'config', 'environment'))
+        puts "done."
+      rescue LoadError
+        puts "could not find environment files. Assuming direct use."
+      ensure
+        CouchTomato::Config.set_config_yml unless CouchTomato::Config.loaded?
+      end
     end
   end
 
   def servers
-    local_server = "http://#{CouchConfig.couch_address}:#{CouchConfig.couch_port}"
+    local_server = "http://#{CouchTomato::Config.couch_address}:#{CouchTomato::Config.couch_port}"
     src_server = (ENV['SRC_SERVER'] || local_server).gsub(/\s*\/\s*$/, '')
     dst_server = (ENV['DST_SERVER'] || local_server).gsub(/\s*\/\s*$/, '')
 

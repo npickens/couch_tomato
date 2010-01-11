@@ -43,5 +43,7 @@ require File.dirname(__FILE__) + '/core_ext/symbol'
 require File.dirname(__FILE__) + '/core_ext/extract_options'
 require File.dirname(__FILE__) + '/core_ext/duplicable'
 require File.dirname(__FILE__) + '/core_ext/inheritable_attributes'
+require File.dirname(__FILE__) + '/couch_tomato/config'
 require File.dirname(__FILE__) + '/couch_tomato/persistence'
 require File.dirname(__FILE__) + '/couch_tomato/js_view_source'
+

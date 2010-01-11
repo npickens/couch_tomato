@@ -52,7 +52,7 @@ module CouchTomato
       status_dict = {
         :NEW_DOC  => "new design:", :NEW_VIEW => "new view:", 
         :MOD_VIEW => "modified:",   :DEL_DOC  => "deleted:", 
-        :DEL_VIEW => "deleted:",    :NEW_DB => "new db:"
+        :DEL_VIEW => "deleted:",    :NEW_DB   => "new db:"
       }
       types = ["map", "reduce"]
       puts "# Changes with respect to the filesystem:"
@@ -139,7 +139,7 @@ module CouchTomato
     end
 
     def self.path(db_name="")
-      "#{Rails.root}/couchdb/views/#{db_name}" if Rails
+      "#{Rails.root rescue nil || "."}/couchdb/views/#{db_name}"
     end
 
     def self.fs_database_names
@@ -159,8 +159,8 @@ module CouchTomato
     # :clicks => {'by_date' => {'map' => ..., 'reduce' => ..., sha1-map => ..., sha1-reduce => ...} }
     def self.fs_design_docs(db_name)
       design_docs = {}
-
-      path = "#{RAILS_ROOT}/couchdb/views/#{db_name}"
+      
+      path = "#{Rails.root rescue nil || "."}/couchdb/views/#{db_name}"
       doc_folders = Dir["#{path}/**/"].map {|ddoc| ddoc.chop! }
       doc_folders.each do |design_doc|
         (Dir["#{design_doc}/**"] - doc_folders).each do |file|
@@ -229,8 +229,10 @@ module CouchTomato
     end
     
     def self.db_url(database_name)
-      "http://" + CouchConfig.couch_address + ":" + CouchConfig.couch_port.to_s \
-       + "/" + CouchConfig.couch_basename + "_" + database_name + "_" + RAILS_ENV
+      puts CouchTomato::Config.couch_suffix
+      
+      "http://#{CouchTomato::Config.couch_address}:#{CouchTomato::Config.couch_port}/" + \
+        ([CouchTomato::Config.couch_basename, database_name, CouchTomato::Config.couch_suffix] - ['']).join('_')
     end
 
     def self.database(database_name, force=false)
