@@ -228,9 +228,7 @@ module CouchTomato
       end
     end
     
-    def self.db_url(database_name)
-      puts CouchTomato::Config.couch_suffix
-      
+    def self.db_url(database_name)      
       "http://#{CouchTomato::Config.couch_address}:#{CouchTomato::Config.couch_port}/" + \
         ([CouchTomato::Config.couch_basename, database_name, CouchTomato::Config.couch_suffix] - ['']).join('_')
     end

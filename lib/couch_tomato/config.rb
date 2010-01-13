@@ -1,5 +1,3 @@
-require 'pp'
-
 module CouchTomato
   class Config
     @config = {
