@@ -1,5 +1,3 @@
-require 'patron'
-
 Ct_Yml_Example = %(defaults: &defaults
   couchdb_address:         127.0.0.1
   couchdb_port:            5984
@@ -81,7 +79,7 @@ class CouchTomatoApp < Thor
   desc 'migrate', 'Runs migrations'
   method_options %w(RAILS_ENV -e) => :string, %w(VERSION -v) => :string, %w(STEP -s) => :string, 
     :redo => :boolean, :reset => :boolean, :up => :boolean, :down => :boolean
-  def migrate #TEST
+  def migrate
     load_env(options)
     supported_args = %w(redo reset up down)
     action = supported_args & options.keys
@@ -116,14 +114,14 @@ class CouchTomatoApp < Thor
     
   desc 'rollback', 'Rolls back to the previous version. Specify the number of steps with STEP=n'
   method_options %w(RAILS_ENV -e) => :string, %w(STEP -s) => :string 
-  def rollback #TEST
+  def rollback
     load_env(options)
     rollback_helper
   end
   
   desc 'forward', 'Rolls forward to the next version. Specify the number of steps with STEP=n'
   method_options %w(RAILS_ENV -e) => :string, %w(STEP -s) => :string 
-  def forward #TEST
+  def forward
     load_env(options)
     databases do |db, dir|
       CouchTomato::Migrator.forward(db, dir, ENV['STEP'] ? ENV['STEP'].to_i : 1)

@@ -1,4 +1,5 @@
 require 'digest/sha1'
+require 'patron'
 
 STDOUT.sync = true
 module CouchTomato
@@ -209,6 +210,7 @@ module CouchTomato
         design_docs = db_design_docs(db)
         
         design_docs.each do |ddoc_sym, ddoc|
+          puts ddoc_sym.to_s
           next if ddoc_sym.to_s == "migrations"
           doc_id = ddoc["_id"]
           view = ddoc["views"].keys.first

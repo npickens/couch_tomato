@@ -91,15 +91,18 @@ Gem::Specification.new do |s|
       s.add_runtime_dependency(%q<json>, [">= 0"])
       s.add_runtime_dependency(%q<validatable>, [">= 0"])
       s.add_runtime_dependency(%q<couchrest>, [">= 0.24"])
+      s.add_runtime_dependency(%q<patron>, [">= 0.4.4"])
     else
       s.add_dependency(%q<json>, [">= 0"])
       s.add_dependency(%q<validatable>, [">= 0"])
       s.add_dependency(%q<couchrest>, [">= 0.24"])
+      s.add_dependency(%q<patron>, [">= 0.4.4"])
     end
   else
     s.add_dependency(%q<json>, [">= 0"])
     s.add_dependency(%q<validatable>, [">= 0"])
     s.add_dependency(%q<couchrest>, [">= 0.24"])
+    s.add_dependency(%q<patron>, [">= 0.4.4"])
   end
 end
 
