@@ -1,81 +1,48 @@
-require 'couchrest'
+require "couchrest"
 
 module CouchTomato
   class Database
-
     class ValidationsFailedError < ::StandardError; end
 
-    # Database
-    class_inheritable_accessor :prefix_string
-    class_inheritable_accessor :database_name
-    class_inheritable_accessor :database_server
-    class_inheritable_accessor :couchrest_db
-    class_inheritable_accessor :views
+    class << self
+      attr_accessor :url
+      attr_accessor :prefix
+      attr_accessor :suffix
+      attr_accessor :name
+      attr_accessor :views
 
-    self.views = {}
-    
-    def self.inherited(c)
-      c.database_name   = c.to_s.underscore
-      c.prefix_string   = CouchTomato::Config.couch_basename
-      c.database_server = CouchTomato::Config.couch_address
+      attr_accessor :couchrest_db
     end
-    
+
+    def self.inherited(c)
+      c.url    = CouchTomato::Config.url
+      c.prefix = CouchTomato::Config.prefix
+      c.suffix = CouchTomato::Config.suffix
+      c.name   = c.to_s.underscore
+      c.views  = {}
+    end
+
     def self.database
       return self.couchrest_db if self.couchrest_db
-      
-      self.prefix_string ||= ''
 
-      tmp_prefix = self.prefix_string + '_'  unless self.prefix_string.empty?
-      tmp_server = self.database_server + '/' unless self.database_server.match(/\/$/)
-      tmp_suffix = '_' + Rails.env  if defined?(Rails)
+      path = "#{self.url.gsub(/\/\s*$/, "")}/#{([self.prefix.to_s, self.name, self.suffix.to_s] - [""]).join("_")}"
 
-      self.couchrest_db = CouchRest.database("#{tmp_server}#{tmp_prefix}#{self.database_name}#{tmp_suffix}")
+      self.couchrest_db = CouchRest.database(path)
+
       begin
         self.couchrest_db.info
       rescue RestClient::ResourceNotFound
-        raise "Database '#{tmp_prefix}#{self.database_name}#{tmp_suffix}' does not exist."
+        raise "Database '#{path}' does not exist."
       end
-      
-      self.couchrest_db
-    end
 
-    def self.prefix (name)
-       self.prefix_string =  name || ''
+      return self.couchrest_db
     end
-    def self.name (name)
-      raise 'You need to provide a database name' if name.nil?
-      self.database_name = (name.class == Symbol)? name.to_s : name
-    end
-    
-    # def self.database_name
-    #   @@database_name ||= self.to_s.underscore
-    # end
-
-    # TODO: specify db=>host mapping in yaml, and allow to differ per environment
-    def self.server (route='http://127.0.0.1:5984/')
-      self.database_server = route
-      
-      # self.prefix_string ||= ''
-      # 
-      # tmp_prefix = self.prefix_string + '_'  unless self.prefix_string.empty?
-      # tmp_server = self.database_server + '/' unless self.database_server.match(/\/$/)
-      # tmp_suffix = '_' + Rails.env  if defined?(Rails)
-      # 
-      # 
-      # self.couchrest_db ||= CouchRest.database("#{tmp_server}#{tmp_prefix}#{self.database_name}#{tmp_suffix}")
-      # begin
-      #   self.couchrest_db.info
-      # rescue RestClient::ResourceNotFound
-      #   raise "Database '#{tmp_prefix}#{self.database_name}#{tmp_suffix}' does not exist."
-      # end
-
-    end
-
 
     def self.view(name, options={})
-      raise 'A View nemonic must be specified' if name.nil?
+      raise "A View nemonic must be specified" if name.nil?
+
       self.views[name] = {}
-      self.views[name][:design_doc] = !options[:design_doc] ? self.database_name.to_sym : options.delete(:design_doc).to_sym
+      self.views[name][:design_doc] = !options[:design_doc] ? self.name.to_sym : options.delete(:design_doc).to_sym
       self.views[name][:view_name] = options.delete(:view_name) || name.to_s
       self.views[name][:model] = options.delete(:model)
       self.views[name][:couch_options] = options
@@ -157,11 +124,9 @@ module CouchTomato
     end
 
     def self.inspect
-      super
-      puts 'Database name: ' + (self.database_name || 'nil')
-      puts 'Database server: ' + (self.database_server || 'nil')
-      puts 'Views:'
-      pp self.views
+      puts "Database server: #{self.url || "nil"}"
+      puts "Database name:   #{self.name || "nil"}"
+      puts "Views: #{self.views.inspect}"
     end
 
     def self.query_view!(name, options={})
